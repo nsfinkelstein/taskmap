@@ -1,16 +1,21 @@
 from collections import namedtuple
 from itertools import chain
 
-# dependencies: map from each task to the set of tasks on which it depends
+import multiprocessing as mp
+
+# dependencies: map from each task to a list of tasks on which it depends
 # done: set of names of functions that have been complete
-graph = namedtuple('graph', ['dependencies', 'done'])
+# results: map from task to result of function call
+# in_progress: tasks currently in progress (for async and parallel)
+graph = namedtuple('graph', ['dependencies', 'done', 'results', 'in_progress'])
 
 
 def create_graph(dependencies):
     dependencies = {task: set(deps) for task, deps in dependencies.items()}
     check_all_tasks_present(dependencies)
     check_cyclic_dependency(dependencies)
-    return graph(dependencies=dependencies, done=set())
+    return graph(dependencies=dependencies, done=set(), results=dict(),
+                 in_progress=set())
 
 
 def check_cyclic_dependency(dependencies):
@@ -47,9 +52,45 @@ def get_ready_tasks(graph):
     for task, deps in graph.dependencies.items():
         if not deps - graph.done:
             ready.add(task)
-    return ready - graph.done
+    return ready - graph.done - graph.in_progress
 
 
-def mark_as_done(graph, func):
-    graph.done.add(func)
+def mark_as_done(graph, task):
+    graph.done.add(task)
+    graph.in_progress.discard(task)
+    return graph
+
+
+def mark_as_in_progress(graph, task):
+    graph.in_progress.add(task)
+    return graph
+
+
+def all_done(graph):
+    return graph.done == graph.dependencies.keys()
+
+
+def run(graph):
+    while not all_done(graph):
+        ready = get_ready_tasks(graph)
+        for task in ready:
+            args = [graph.results[dep] for dep in graph.dependencies[task]]
+            graph.results[task] = task(*args)
+            graph = mark_as_done(graph, task)
+    return graph
+
+
+def run_parallel(graph, ncores=None):
+    with mp.Pool(ncores or mp.cpu_count() // 2) as pool:
+        while not all_done(graph):
+            ready = get_ready_tasks(graph)
+            for task in ready:
+                args = [graph.results[dep] for dep in graph.dependencies[task]]
+
+                def callback(result):
+                    mark_as_done(graph, task)
+                    graph.results[task] = result
+
+                pool.apply_async(task, args=args, callback=callback)
+                mark_as_in_progress(graph, task)
     return graph

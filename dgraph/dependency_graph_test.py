@@ -1,18 +1,18 @@
 import pytest
 
-import dependency_graph
+import dgraph
 
 
 def a():
     return 5
 
 
-def b():
-    return 10
+def b(x):
+    return x + 10
 
 
-def c():
-    return 20
+def c(x, y):
+    return x + y + 20
 
 
 def test_graph_ready():
@@ -22,10 +22,10 @@ def test_graph_ready():
         b: {c},
         c: set(),
     }
-    graph = dependency_graph.create_graph(dependencies)
+    graph = dgraph.create_graph(dependencies)
 
     # when
-    results = dependency_graph.get_ready_tasks(graph)
+    results = dgraph.get_ready_tasks(graph)
 
     # then
     assert results == {c}
@@ -38,14 +38,14 @@ def test_graph_ready_after_task_completed():
         b: {c},
         c: set(),
     }
-    graph = dependency_graph.create_graph(dependencies)
-    ready = dependency_graph.get_ready_tasks(graph)
+    graph = dgraph.create_graph(dependencies)
+    ready = dgraph.get_ready_tasks(graph)
 
     # when
     for func in ready:
-        dependency_graph.done(graph, func)
+        dgraph.mark_as_done(graph, func)
 
-    results = dependency_graph.get_ready_tasks(graph)
+    results = dgraph.get_ready_tasks(graph)
 
     # then
     assert results == {b}
@@ -63,7 +63,7 @@ def test_cyclic_dependency():
     with pytest.raises(ValueError):
 
         # when
-        dependency_graph.create_graph(dependencies)
+        dgraph.create_graph(dependencies)
 
 
 def test_absent_tasks():
@@ -76,4 +76,38 @@ def test_absent_tasks():
     with pytest.raises(ValueError):
 
         # when
-        dependency_graph.create_graph(dependencies)
+        dgraph.create_graph(dependencies)
+
+
+def test_run_pass_args():
+    # given
+    dependencies = {
+        c: [a, b],
+        b: [a],
+        a: [],
+
+    }
+    graph = dgraph.create_graph(dependencies)
+
+    # when
+    graph = dgraph.run(graph)
+
+    # then
+    assert graph.results == {a: 5, b: 15, c: 40}
+
+
+def test_run_parallel():
+    # given
+    dependencies = {
+        c: [a, b],
+        b: [a],
+        a: [],
+
+    }
+    graph = dgraph.create_graph(dependencies)
+
+    # when
+    graph = dgraph.run_parallel(graph)
+
+    # then
+    assert graph.results == {a: 5, b: 15, c: 40}
