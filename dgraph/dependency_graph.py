@@ -174,8 +174,8 @@ async def parallel_scheduler(graph, sleep, loop):
             task = list(ready)[0]
             mark_as_in_progress(graph, task)
         else:
-            await asyncio.sleep(sleep)
             graph.lock.value = 0
+            await asyncio.sleep(sleep)
             continue
 
         args = [graph.results[dep] for dep in graph.dependencies[task]
