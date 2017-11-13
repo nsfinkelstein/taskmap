@@ -1,4 +1,5 @@
 import pytest
+import time
 
 import dgraph
 
@@ -90,24 +91,76 @@ def test_run_pass_args():
     graph = dgraph.create_graph(dependencies)
 
     # when
-    graph = dgraph.run(graph)
+    results = dgraph.run(graph)
 
     # then
-    assert graph.results == {a: 5, b: 15, c: 40}
+    assert results == {a: 5, b: 15, c: 40}
+
+
+def long_task():
+    time.sleep(.02)
+    return 5
 
 
 def test_run_parallel():
     # given
     dependencies = {
-        c: [a, b],
-        b: [a],
-        a: [],
+        c: [long_task, b],
+        b: [long_task],
+        long_task: [],
 
     }
     graph = dgraph.create_graph(dependencies)
 
     # when
-    graph = dgraph.run_parallel(graph)
+    results = dgraph.run_parallel(graph)
 
     # then
-    assert graph.results == {a: 5, b: 15, c: 40}
+    assert results == {long_task: 5, b: 15, c: 40}
+
+
+async def ab(x):
+    return x + 10
+
+
+async def ac(x, y):
+    return x + y + 20
+
+
+async def along_task():
+    time.sleep(.02)
+    return 5
+
+
+def test_run_async():
+    # given
+    dependencies = {
+        ac: [along_task, ab],
+        ab: [along_task],
+        along_task: [],
+
+    }
+    graph = dgraph.create_graph(dependencies)
+
+    # when
+    results = dgraph.run_async(graph)
+
+    # then
+    assert results == {along_task: 5, ab: 15, ac: 40}
+
+
+def test_run_parllel_async():
+    # given
+    dependencies = {
+        ac: [along_task, ab],
+        ab: [along_task],
+        along_task: [],
+
+    }
+    graph = dgraph.create_graph(dependencies)
+
+    # when
+    results = dgraph.run_parallel_async(graph)
+
+    # then
+    assert results == {along_task: 5, ab: 15, ac: 40}
