@@ -95,15 +95,15 @@ def run_parallel(graph, ncores=None, sleep=.01):
         while not all_done(graph):
             ready = get_ready_tasks(graph)
             for task in ready:
+                mark_as_in_progress(graph, task)
                 args = [graph.results[dep] for dep in graph.dependencies[task]
                         if graph.results[dep] is not None]
 
                 def callback(result):
-                    mark_as_done(graph, task)
                     graph.results[task] = result
+                    mark_as_done(graph, task)
 
                 pool.apply_async(task, args=args, callback=callback)
-                mark_as_in_progress(graph, task)
 
             time.sleep(sleep)
     return graph.results
@@ -112,12 +112,7 @@ def run_parallel(graph, ncores=None, sleep=.01):
 def run_async(graph, sleep=.01):
     """ sleep: how long to wait before checking if a task is done """
     loop = asyncio.new_event_loop()
-
-    async def async_func():
-        return await scheduler(graph, sleep, loop)
-
-    loop.run_until_complete(async_func())
-
+    loop.run_until_complete(scheduler(graph, sleep, loop))
     loop.close()
     return graph.results
 
