@@ -1,7 +1,7 @@
 ## dgraph
 
 This library facilitates keeping track of dependencies between python functions,
-and running them asyncronously and in parallel.
+and running them asyncronously and/or in parallel.
 
 ### Installation
 
@@ -15,9 +15,7 @@ This library exports three functions.
 
 ##### create_graph(dependencies)
 
-Creates the dependency graph. This is a named tuple comprised of the
-dependencies argument and a list called `done` which is used to keep track of
-which tasks have been completed. 
+Creates the dependency graph.
 
 The `dependencies` argument is a dictionary that maps functions to the functions
 they depend on. The keys in the dictionary are functions and the values are list
@@ -55,6 +53,9 @@ results = dgraph.run(graph)
 
 assert results == {a: 5, b: 15, c: 40}
 ```
+
+Note that, for example, the result of `a` is fed to `b`, and the results of `a`
+and `b` are fed to `c`.
 
 ##### dgraph.run_async(graph, sleep=.01)
 
