@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='dgraph',
-    version='0.0.2',
+    version='0.0.3',
     description='Simple dependency graph for python functions',
     url='https://github.com/n-s-f/dgraph',
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
