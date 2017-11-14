@@ -4,20 +4,21 @@ from bunch import Bunch
 
 import time
 import asyncio
-import multiprocessing as mp
+import multiprocess as mp
 
 # dependencies: map from each task to a list of tasks on which it depends
 # done: set of names of functions that have been complete
 # results: map from task to result of function call
 # in_progress: tasks currently in progress (for async and parallel)
-Graph = namedtuple('graph', ['dependencies', 'done', 'results', 'in_progress'])
+Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results', 'in_progress'])
 
 
-def create_graph(dependencies):
+def create_graph(funcs, dependencies):
     dependencies = {task: list(deps) for task, deps in dependencies.items()}
     check_all_tasks_present(dependencies)
     check_cyclic_dependency(dependencies)
-    return Graph(dependencies=dependencies, done=[], results={}, in_progress=[])
+    return Graph(funcs=funcs, dependencies=dependencies, done=[], results={},
+                 in_progress=[])
 
 
 def check_cyclic_dependency(dependencies):
@@ -28,7 +29,7 @@ def check_cyclic_dependency(dependencies):
 
         while parents:
             if task in parents:
-                raise ValueError('Cyclic dependency: task %s' % task.__name__)
+                raise ValueError('Cyclic dependency: task %s' % task)
 
             ancestry[task].update(parents)
 
@@ -85,7 +86,7 @@ def run(graph):
         ready = get_ready_tasks(graph)
         for task in ready:
             args = [graph.results[dep] for dep in graph.dependencies[task]]
-            graph.results[task] = task(*args)
+            graph.results[task] = graph.funcs[task](*args)
             graph = mark_as_done(graph, task)
     return graph.results
 
@@ -103,7 +104,7 @@ def run_parallel(graph, ncores=None, sleep=.01):
                     graph.results[task] = result
                     mark_as_done(graph, task)
 
-                pool.apply_async(task, args=args, callback=callback)
+                pool.apply_async(graph.funcs[task], args=args, callback=callback)
 
             time.sleep(sleep)
     return graph.results
@@ -124,7 +125,7 @@ async def scheduler(graph, sleep, loop):
                 if graph.results[dep] is not None]
 
         async def coro():
-            result = await task(*args)
+            result = await graph.funcs[task](*args)
             graph.results[task] = result
             mark_as_done(graph, task)
 
@@ -143,7 +144,8 @@ def run_async(graph, sleep=.01, scheduler=scheduler):
 
 def create_parallel_compatible_graph(graph, manager):
     deps = manager.dict(graph.dependencies)
-    return Bunch(dependencies=deps, done=manager.list(),
+    funcs = manager.dict(graph.funcs)
+    return Bunch(funcs=funcs, dependencies=deps, done=manager.list(),
                  results=manager.dict(), in_progress=manager.list(),
                  lock=manager.Value(int, 0))
 
@@ -182,7 +184,7 @@ async def parallel_scheduler(graph, sleep, loop):
                 if graph.results[dep] is not None]
 
         async def coro():
-            result = await task(*args)
+            result = await graph.funcs[task](*args)
             graph.results[task] = result
             mark_as_done(graph, task)
 
