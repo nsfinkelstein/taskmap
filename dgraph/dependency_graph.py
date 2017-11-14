@@ -85,7 +85,8 @@ def run(graph):
     while not all_done(graph):
         ready = get_ready_tasks(graph)
         for task in ready:
-            args = [graph.results[dep] for dep in graph.dependencies[task]]
+            args = [graph.results[dep] for dep in graph.dependencies[task]
+                    if graph.results[dep] is not None]
             graph.results[task] = graph.funcs[task](*args)
             graph = mark_as_done(graph, task)
     return graph.results
