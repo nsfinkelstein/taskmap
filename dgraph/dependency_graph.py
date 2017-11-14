@@ -25,19 +25,21 @@ def check_cyclic_dependency(dependencies):
     ancestry = dict()
 
     for task, parents in dependencies.items():
+        already_seen = set()
         ancestry[task] = set()
 
         while parents:
             if task in parents:
                 raise ValueError('Cyclic dependency: task %s' % task)
 
+            already_seen.update(parents)
             ancestry[task].update(parents)
 
             new_parents = set()
             for parent in parents:
                 new_parents.update(ancestry.get(parent, dependencies[parent]))
 
-            parents = new_parents
+            parents = new_parents - already_seen
 
 
 def check_all_tasks_present(deps):
