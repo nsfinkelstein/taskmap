@@ -16,11 +16,12 @@ import multiprocess as mp
 # results: map from task to result of function call
 # in_progress: tasks currently in progress (for async and parallel)
 Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results',
-                             'in_progress', 'lock'])
+                             'in_progress', 'lock', 'io_bound'])
 
 
-def create_graph(funcs, dependencies):
+def create_graph(funcs, dependencies, io_bound=None):
     dependencies = {task: list(deps) for task, deps in dependencies.items()}
+    io_bound = set(io_bound) if io_bound else set()
 
     check_all_tasks_present(dependencies)
     check_cyclic_dependency(dependencies)
@@ -33,7 +34,7 @@ def create_graph(funcs, dependencies):
         marked_funcs[name] = func
 
     return Graph(funcs=marked_funcs, dependencies=dependencies, done=[],
-                 results={}, in_progress=[], lock=0)
+                 results={}, in_progress=[], lock=0, io_bound=io_bound)
 
 
 def check_cyclic_dependency(dependencies):
@@ -140,6 +141,11 @@ async def scheduler(graph, sleep, loop):
     while not all_done(graph):
         ready = get_ready_tasks(graph)
 
+        # run io bound tasks first
+        overlap = set(ready) & set(graph.io_bound)
+        if overlap:
+            ready = overlap
+
         for task in ready:
             mark_as_in_progress(graph, task)
             args = [graph.results[dep] for dep in graph.dependencies[task]
@@ -165,9 +171,10 @@ def run_async(graph, sleep=.1, scheduler=scheduler):
 def create_parallel_compatible_graph(graph, manager):
     deps = manager.dict(graph.dependencies)
     funcs = manager.dict(graph.funcs)
+    io_bound = manager.list(graph.io_bound)
     return Graph(funcs=funcs, dependencies=deps, done=manager.list(),
                  results=manager.dict(), in_progress=manager.list(),
-                 lock=manager.Value(int, 0))
+                 lock=manager.Value(int, 0), io_bound=io_bound)
 
 
 def run_parallel_async(graph, ncores=None, sleep=.05):
@@ -200,9 +207,9 @@ async def parallel_scheduler(graph, sleep, loop):
 
         if ready:
             # start io bound tasks first
-            io_bound = [f for f in ready if graph.funcs[f].bottleneck == 'io']
-            if io_bound:
-                ready = io_bound
+            overlap = set(ready) & set(graph.io_bound)
+            if overlap:
+                ready = overlap
 
             task = list(ready)[0]
             mark_as_in_progress(graph, task)

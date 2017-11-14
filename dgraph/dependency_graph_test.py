@@ -302,14 +302,9 @@ async def p():
 
 def test_async_parallel_speed():
     # given
-    r.bottleneck = 'io'
-    t.bottleneck = 'io'
-    w.bottleneck = 'cpu'
-    p.bottleneck = 'cpu'
-
     funcs = {'r': r, 't': t, 'w': w, 'p': p}
     dependencies = {'r': [], 't': [], 'w': [], 'p': []}
-    graph = dgraph.create_graph(funcs, dependencies)
+    graph = dgraph.create_graph(funcs, dependencies, io_bound=['r', 't'])
 
     # when
     start = time.time()
