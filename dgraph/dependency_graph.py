@@ -7,6 +7,10 @@ import time
 import asyncio
 import multiprocess as mp
 
+# TODO: Error handling
+# create an 'error' property
+# then move all children to 'done' with 'results' value 'not done; parent error'
+
 # dependencies: map from each task to a list of tasks on which it depends
 # done: set of names of functions that have been complete
 # results: map from task to result of function call
@@ -55,7 +59,7 @@ def check_all_tasks_present(deps):
     absent_tasks = set(chain(*deps.values())) - set(deps.keys())
 
     if absent_tasks:
-        task_names = [task.__name__ for task in absent_tasks]
+        task_names = [task for task in absent_tasks]
         msg = ' '.join(['Tasks {} are depended upon, but are not present as',
                         'keys in dependencies dictionary.'])
         raise ValueError(msg.format(task_names))

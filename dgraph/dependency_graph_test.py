@@ -91,7 +91,7 @@ def test_cyclic_dependency():
 def test_absent_tasks():
     # given
     dependencies = {
-        a: {b, c},
+        'a': {'b', 'c'},
     }
 
     funcs = {
@@ -272,19 +272,19 @@ def test_parallel_speed():
 
 
 async def r():
-    await asyncio.sleep(.5)
+    await asyncio.sleep(1)
 
 
 async def t():
-    await asyncio.sleep(.5)
+    await asyncio.sleep(1)
 
 
 async def w():
-    time.sleep(.5)
+    time.sleep(1)
 
 
 async def p():
-    time.sleep(.5)
+    time.sleep(1)
 
 
 def test_async_parallel_speed():
@@ -304,5 +304,4 @@ def test_async_parallel_speed():
     end = time.time()
 
     # then
-    print(end - start)
-    assert end - start < 1
+    assert end - start < 2
