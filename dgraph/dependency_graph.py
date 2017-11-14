@@ -1,6 +1,8 @@
 from itertools import chain, repeat
 from collections import namedtuple
+from functools import partial
 
+import os
 import time
 import asyncio
 import multiprocess as mp
@@ -9,15 +11,23 @@ import multiprocess as mp
 # done: set of names of functions that have been complete
 # results: map from task to result of function call
 # in_progress: tasks currently in progress (for async and parallel)
-Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results', 'in_progress', 'lock'])
+Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results',
+                             'in_progress', 'lock'])
 
 
 def create_graph(funcs, dependencies):
     dependencies = {task: list(deps) for task, deps in dependencies.items()}
     check_all_tasks_present(dependencies)
     check_cyclic_dependency(dependencies)
-    return Graph(funcs=funcs, dependencies=dependencies, done=[], results={},
-                 in_progress=[], lock=0)
+
+    marked_funcs = {}
+    for name, func in funcs.items():
+        if not hasattr(func, 'bottleneck'):
+            func.bottleneck = None
+        marked_funcs[name] = func
+
+    return Graph(funcs=marked_funcs, dependencies=dependencies, done=[],
+                 results={}, in_progress=[], lock=0)
 
 
 def check_cyclic_dependency(dependencies):
@@ -93,7 +103,7 @@ def run(graph):
     return graph.results
 
 
-def run_parallel(graph, ncores=None, sleep=.01):
+def run_parallel(graph, ncores=None, sleep=.1):
     with mp.Pool(ncores or mp.cpu_count() // 2) as pool:
         while not all_done(graph):
             ready = get_ready_tasks(graph)
@@ -102,11 +112,12 @@ def run_parallel(graph, ncores=None, sleep=.01):
                 args = [graph.results[dep] for dep in graph.dependencies[task]
                         if graph.results[dep] is not None]
 
-                def callback(result):
+                def callback(result, task):
                     graph.results[task] = result
                     mark_as_done(graph, task)
 
-                pool.apply_async(graph.funcs[task], args=args, callback=callback)
+                call = partial(callback, task=task)
+                pool.apply_async(graph.funcs[task], args=args, callback=call)
 
             time.sleep(sleep)
     return graph.results
@@ -116,27 +127,21 @@ async def scheduler(graph, sleep, loop):
     while not all_done(graph):
         ready = get_ready_tasks(graph)
 
-        if ready:
-            task = list(ready)[0]
+        for task in ready:
             mark_as_in_progress(graph, task)
-        else:
-            await asyncio.sleep(sleep)
-            continue
+            args = [graph.results[dep] for dep in graph.dependencies[task]
+                    if graph.results[dep] is not None]
 
-        args = [graph.results[dep] for dep in graph.dependencies[task]
-                if graph.results[dep] is not None]
+            async def coro(task):
+                result = await graph.funcs[task](*args)
+                graph.results[task] = result
+                mark_as_done(graph, task)
 
-        async def coro():
-            result = await graph.funcs[task](*args)
-            graph.results[task] = result
-            mark_as_done(graph, task)
-
-        asyncio.ensure_future(coro(), loop=loop)
-
+            asyncio.ensure_future(coro(task), loop=loop)
         await asyncio.sleep(sleep)
 
 
-def run_async(graph, sleep=.01, scheduler=scheduler):
+def run_async(graph, sleep=.1, scheduler=scheduler):
     """ sleep: how long to wait before checking if a task is done """
     loop = asyncio.new_event_loop()
     loop.run_until_complete(scheduler(graph, sleep, loop))
@@ -152,7 +157,7 @@ def create_parallel_compatible_graph(graph, manager):
                  lock=manager.Value(int, 0))
 
 
-def run_parallel_async(graph, ncores=None, sleep=.01):
+def run_parallel_async(graph, ncores=None, sleep=.05):
     ncores = ncores or mp.cpu_count() // 2
 
     with mp.Manager() as manager:
@@ -166,15 +171,26 @@ def run_parallel_async(graph, ncores=None, sleep=.01):
 
 async def parallel_scheduler(graph, sleep, loop):
     while not all_done(graph):
-        if graph.lock.value == 1:
+        if graph.lock.value == 0:
+            graph.lock.value = os.getpid()
+
+        # wait to see if some other pid got assigned due to race condition
+        # i.e. if the conditional check above passed 'simultaneously' in two
+        # processes, the second one wins (the value itself is processes safe)
+        time.sleep(sleep)
+
+        if graph.lock.value != os.getpid():
             await asyncio.sleep(sleep)
             continue
-
-        graph.lock.value = 1
 
         ready = get_ready_tasks(graph)
 
         if ready:
+            # start io bound tasks first
+            io_bound = [f for f in ready if graph.funcs[f].bottleneck == 'io']
+            if io_bound:
+                ready = io_bound
+
             task = list(ready)[0]
             mark_as_in_progress(graph, task)
         else:
@@ -185,12 +201,12 @@ async def parallel_scheduler(graph, sleep, loop):
         args = [graph.results[dep] for dep in graph.dependencies[task]
                 if graph.results[dep] is not None]
 
-        async def coro():
+        async def coro(task):
             result = await graph.funcs[task](*args)
             graph.results[task] = result
             mark_as_done(graph, task)
 
-        asyncio.ensure_future(coro(), loop=loop)
+        asyncio.ensure_future(coro(task), loop=loop)
 
         graph.lock.value = 0
         await asyncio.sleep(sleep)

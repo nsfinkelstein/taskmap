@@ -219,3 +219,90 @@ def test_run_parllel_async():
 
     # then
     assert results == {'along_task': 5, 'ab': 15, 'ac': 40}
+
+
+async def x():
+    await asyncio.sleep(.5)
+    return 5
+
+
+async def y():
+    await asyncio.sleep(.5)
+    return 5
+
+
+def test_async_speed():
+    # given
+    funcs = {'x': x, 'y': y}
+    dependencies = {'x': [], 'y': []}
+    graph = dgraph.create_graph(funcs, dependencies)
+
+    # when
+    start = time.time()
+    dgraph.run_async(graph)
+    end = time.time()
+
+    # then
+    assert end - start < 1
+
+
+def v():
+    time.sleep(.5)
+    return 5
+
+
+def u():
+    time.sleep(.5)
+    return 5
+
+
+def test_parallel_speed():
+    # given
+    funcs = {'x': u, 'y': v}
+    dependencies = {'x': [], 'y': []}
+    graph = dgraph.create_graph(funcs, dependencies)
+
+    # when
+    start = time.time()
+    dgraph.run_parallel(graph)
+    end = time.time()
+
+    # then
+    assert end - start < 1
+
+
+async def r():
+    await asyncio.sleep(.5)
+
+
+async def t():
+    await asyncio.sleep(.5)
+
+
+async def w():
+    time.sleep(.5)
+
+
+async def p():
+    time.sleep(.5)
+
+
+def test_async_parallel_speed():
+    # given
+    r.bottleneck = 'io'
+    t.bottleneck = 'io'
+    w.bottleneck = 'cpu'
+    p.bottleneck = 'cpu'
+
+    funcs = {'r': r, 't': t, 'w': w, 'p': p}
+    dependencies = {'r': [], 't': [], 'w': [], 'p': []}
+    graph = dgraph.create_graph(funcs, dependencies)
+
+    # when
+    start = time.time()
+    dgraph.run_parallel_async(graph, ncores=2)
+    end = time.time()
+
+    # then
+    print(end - start)
+    assert end - start < 1

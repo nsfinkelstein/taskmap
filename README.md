@@ -13,26 +13,40 @@ pip install dgraph
 
 This library exports three functions.
 
-##### create_graph(dependencies)
+##### create_graph(funcs, dependencies)
 
 Creates the dependency graph.
 
-The `dependencies` argument is a dictionary that maps functions to the functions
-they depend on. The keys in the dictionary are functions and the values are list
-of functions. The order matters because the the results of the functions that a
-function depends on will be fed in to that function in the order that the
-functions are listed in the dependencies dict. Functions that return None will
-not have their results fed into functions that depend on them.
+The `funcs` argument is a dictionary that maps the names of the tasks to
+functions.
+
+The `dependencies` argument is a dictionary that maps task names to a collection
+of the names of the tasks they depend on. The keys in the dictionary are
+functions and the values are list of functions. The order matters because the
+the results of the functions that a function depends on will be fed in to that
+function in the order that the functions are listed in the dependencies dict.
+Functions that return None will not have their results fed into functions that
+depend on them.
 
 This will throw for a dependency dictionary with cyclic dependencies, or if
 there are functions that are depended on but are not present as keys in the
 dependencies dictionary.
+
+You can set a `bottleneck` property on the actual function in the `funcs` dict.
+Functions that have an io bottleneck should be run first for efficiency reasons
+(we can use the processors while waiting for them to finish), so functions with
+a `bottleneck` property set to `'io'` will be run first.
+
+Note that for coroutines, `functools.partial` will not work. If you need to
+create functions that do not take arguments, you can use `paco.partial` from the
+`paco` library.
 
 ##### dgraph.run(graph)
 
 Runs the graph in a single thread.
 
 
+# TODO: update examples to use funcs argument
 ```.py
 import dgraph
 
