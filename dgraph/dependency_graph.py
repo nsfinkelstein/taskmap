@@ -21,8 +21,10 @@ Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results',
 
 def create_graph(funcs, dependencies):
     dependencies = {task: list(deps) for task, deps in dependencies.items()}
+
     check_all_tasks_present(dependencies)
     check_cyclic_dependency(dependencies)
+    check_all_keys_are_funcs(funcs, dependencies)
 
     marked_funcs = {}
     for name, func in funcs.items():
@@ -59,10 +61,17 @@ def check_all_tasks_present(deps):
     absent_tasks = set(chain(*deps.values())) - set(deps.keys())
 
     if absent_tasks:
-        task_names = [task for task in absent_tasks]
         msg = ' '.join(['Tasks {} are depended upon, but are not present as',
                         'keys in dependencies dictionary.'])
-        raise ValueError(msg.format(task_names))
+        raise ValueError(msg.format(absent_tasks))
+
+
+def check_all_keys_are_funcs(funcs, dependencies):
+    vacuous_names = set(dependencies.keys()) - set(funcs.keys())
+    if vacuous_names:
+        msg = ' '.join(['Tasks {} are listed in the dependencies dict, but do',
+                        'not correspond to functions in the funcs dict.'])
+        raise ValueError(msg.format(vacuous_names))
 
 
 def get_ready_tasks(graph):

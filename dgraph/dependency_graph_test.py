@@ -107,6 +107,19 @@ def test_absent_tasks():
         dgraph.create_graph(funcs, dependencies)
 
 
+def test_all_names_are_funcs():
+    # given
+    dependencies = {'d': ['a'], 'a': []}
+
+    funcs = {'a': a, 'b': b, 'c': c}
+
+    # then
+    with pytest.raises(ValueError):
+
+        # when
+        dgraph.create_graph(funcs, dependencies)
+
+
 def test_run_pass_args():
     # given
     dependencies = {
