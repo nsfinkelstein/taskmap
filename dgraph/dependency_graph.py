@@ -1,6 +1,5 @@
 from itertools import chain, repeat
 from collections import namedtuple
-from bunch import Bunch
 
 import time
 import asyncio
@@ -10,7 +9,7 @@ import multiprocess as mp
 # done: set of names of functions that have been complete
 # results: map from task to result of function call
 # in_progress: tasks currently in progress (for async and parallel)
-Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results', 'in_progress'])
+Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results', 'in_progress', 'lock'])
 
 
 def create_graph(funcs, dependencies):
@@ -18,7 +17,7 @@ def create_graph(funcs, dependencies):
     check_all_tasks_present(dependencies)
     check_cyclic_dependency(dependencies)
     return Graph(funcs=funcs, dependencies=dependencies, done=[], results={},
-                 in_progress=[])
+                 in_progress=[], lock=0)
 
 
 def check_cyclic_dependency(dependencies):
@@ -148,7 +147,7 @@ def run_async(graph, sleep=.01, scheduler=scheduler):
 def create_parallel_compatible_graph(graph, manager):
     deps = manager.dict(graph.dependencies)
     funcs = manager.dict(graph.funcs)
-    return Bunch(funcs=funcs, dependencies=deps, done=manager.list(),
+    return Graph(funcs=funcs, dependencies=deps, done=manager.list(),
                  results=manager.dict(), in_progress=manager.list(),
                  lock=manager.Value(int, 0))
 
