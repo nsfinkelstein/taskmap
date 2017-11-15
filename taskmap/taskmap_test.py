@@ -138,10 +138,10 @@ def test_run_pass_args():
     graph = taskmap.create_graph(funcs, dependencies)
 
     # when
-    results = taskmap.run(graph)
+    graph = taskmap.run(graph)
 
     # then
-    assert results == {'a': 5, 'b': 15, 'c': 40}
+    assert graph.results == {'a': 5, 'b': 15, 'c': 40}
 
 
 error = RuntimeError('some error')
@@ -229,10 +229,10 @@ def test_run_parallel():
     graph = taskmap.create_graph(funcs, dependencies)
 
     # when
-    results = taskmap.run_parallel(graph)
+    graph = taskmap.run_parallel(graph)
 
     # then
-    assert results == {'long_task': 5, 'b': 15, 'c': 40}
+    assert graph.results == {'long_task': 5, 'b': 15, 'c': 40}
 
 
 async def ab(x):
@@ -266,10 +266,10 @@ def test_run_async():
     graph = taskmap.create_graph(funcs, dependencies)
 
     # when
-    results = taskmap.run_async(graph)
+    graph = taskmap.run_async(graph)
 
     # then
-    assert results == {'along_task': 5, 'ab': 15, 'ac': 40}
+    assert graph.results == {'along_task': 5, 'ab': 15, 'ac': 40}
 
 
 def test_run_parllel_async():
@@ -290,10 +290,10 @@ def test_run_parllel_async():
     graph = taskmap.create_graph(funcs, dependencies)
 
     # when
-    results = taskmap.run_parallel_async(graph)
+    graph = taskmap.run_parallel_async(graph)
 
     # then
-    assert results == {'along_task': 5, 'ab': 15, 'ac': 40}
+    assert graph.results == {'along_task': 5, 'ab': 15, 'ac': 40}
 
 
 async def x():
@@ -375,4 +375,3 @@ def test_async_parallel_speed():
 
     # then
     assert end - start < 2
-

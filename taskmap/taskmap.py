@@ -19,6 +19,20 @@ Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results',
                              'in_progress', 'lock', 'io_bound'])
 
 
+def build_graph_for_failed_tasks(graph):
+    """
+    create a new graph based on the outcomes of a previous run.
+    if there were errors - only the failed tasks and their children will
+    be included in the new graph. otherwise the new graph will be empty
+    """
+    failed_tasks = [task for task, res in graph.result.items()
+                    if isinstance(res, Exception)]
+
+    rerun = set(chain(*[get_all_children(task) for task in failed_tasks]))
+    dependencies = {k: v for k, v in graph.dependencies.items() if k in rerun}
+    return create_graph(graph.funcs, dependencies, graph.io_bound)
+
+
 def create_graph(funcs, dependencies, io_bound=None):
     dependencies = {task: list(deps) for task, deps in dependencies.items()}
     io_bound = set(io_bound) if io_bound else set()
@@ -143,7 +157,7 @@ def run(graph):
             args = [graph.results[dep] for dep in graph.dependencies[task]
                     if graph.results[dep] is not None]
             graph = run_task(graph, task, args)
-    return graph.results
+    return graph
 
 
 def run_parallel(graph, ncores=None, sleep=.1):
@@ -163,7 +177,7 @@ def run_parallel(graph, ncores=None, sleep=.1):
                 pool.apply_async(graph.funcs[task], args=args, callback=call)
 
             time.sleep(sleep)
-    return graph.results
+    return graph
 
 
 async def scheduler(graph, sleep, loop):
@@ -194,7 +208,7 @@ def run_async(graph, sleep=.1, scheduler=scheduler):
     loop = asyncio.new_event_loop()
     loop.run_until_complete(scheduler(graph, sleep, loop))
     loop.close()
-    return graph.results
+    return graph
 
 
 def create_parallel_compatible_graph(graph, manager):
@@ -206,6 +220,12 @@ def create_parallel_compatible_graph(graph, manager):
                  lock=manager.Value(int, 0), io_bound=io_bound)
 
 
+def recover_values_from_manager(graph):
+    return Graph(dependencies=dict(graph.dependencies), in_progress=[],
+                 funcs=dict(graph.funcs), done=list(graph.done), lock=0,
+                 results=dict(graph.results), io_bound=list(graph.io_bound))
+
+
 def run_parallel_async(graph, ncores=None, sleep=.05):
     ncores = ncores or mp.cpu_count() // 2
 
@@ -215,7 +235,7 @@ def run_parallel_async(graph, ncores=None, sleep=.05):
         with mp.Pool(ncores) as pool:
             pool.starmap(run_async, repeat([graph, sleep, parallel_scheduler], ncores))
 
-        return dict(graph.results)
+        return recover_values_from_manager(graph)
 
 
 async def parallel_scheduler(graph, sleep, loop):
