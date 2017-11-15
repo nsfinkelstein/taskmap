@@ -6,6 +6,7 @@ import os
 import time
 import asyncio
 import logging
+import datetime as dt
 import multiprocess as mp
 import multiprocessing_logging as mplogging
 
@@ -17,8 +18,21 @@ import multiprocessing_logging as mplogging
 Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results',
                              'in_progress', 'lock', 'io_bound'])
 
-
 logger = logging.getLogger('taskmap')
+
+now = dt.datetime.now()
+fh = logging.FileHandler('taskmap{}.log'.format(now.strftime('%m-%d-%Y--%H.%M.%S')))
+fh.setLevel(logging.DEBUG)
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+fh.setFormatter(formatter)
+
+logger.addHandler(ch)
+logger.addHandler(fh)
 mplogging.install_mp_handler(logger)
 
 
@@ -290,7 +304,7 @@ async def run_task_async(graph, task, args):
         logger.info('pid {}: finished task {}'.format(os.getpid(), task))
     except Exception as error:
         kwargs = {'exc_info': error}
-        logger.info('pid {}: failed task {}'.format(os.getpid(), task), kwargs)
+        logger.error('pid {}: failed task {}'.format(os.getpid(), task), kwargs)
         result = error
         graph = mark_children_as_incomplete(graph, task)
 
