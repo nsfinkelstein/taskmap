@@ -304,7 +304,7 @@ async def run_task_async(graph, task, args):
         logger.info('pid {}: finished task {}'.format(os.getpid(), task))
     except Exception as error:
         kwargs = {'exc_info': error}
-        logger.error('pid {}: failed task {}'.format(os.getpid(), task), kwargs)
+        logger.exception('pid {}: failed task {}'.format(os.getpid(), task), kwargs)
         result = error
         graph = mark_children_as_incomplete(graph, task)
 
