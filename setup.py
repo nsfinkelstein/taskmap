@@ -6,5 +6,5 @@ setup(
     description='Dependency graph with parallel asyncronous task runner',
     url='https://github.com/n-s-f/taskmap',
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
-    install_requires=['multiprocess'],
+    install_requires=['multiprocess', 'multiprocessing-logging'],
 )

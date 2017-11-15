@@ -5,11 +5,10 @@ from functools import partial
 import os
 import time
 import asyncio
+import logging
 import multiprocess as mp
+import multiprocessing_logging as mplogging
 
-# TODO: Error handling
-# create an 'error' property
-# then move all children to 'done' with 'results' value 'not done; parent error'
 
 # dependencies: map from each task to a list of tasks on which it depends
 # done: set of names of functions that have been complete
@@ -17,6 +16,10 @@ import multiprocess as mp
 # in_progress: tasks currently in progress (for async and parallel)
 Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results',
                              'in_progress', 'lock', 'io_bound'])
+
+
+logger = logging.getLogger('taskmap')
+mplogging.install_mp_handler(logger)
 
 
 def build_graph_for_failed_tasks(graph):
@@ -263,6 +266,7 @@ async def parallel_scheduler(graph, sleep, loop):
 
             task = list(ready)[0]
             mark_as_in_progress(graph, task)
+            logger.info('pid {}: claimed task {}'.format(os.getpid(), task))
         else:
             graph.lock.value = 0
             await asyncio.sleep(sleep)
@@ -281,8 +285,12 @@ async def run_task_async(graph, task, args):
     func = graph.funcs[task]
 
     try:
+        logger.info('pid {}: starting task {}'.format(os.getpid(), task))
         result = await func(*args)
+        logger.info('pid {}: finished task {}'.format(os.getpid(), task))
     except Exception as error:
+        kwargs = {'exc_info': error}
+        logger.info('pid {}: failed task {}'.format(os.getpid(), task), kwargs)
         result = error
         graph = mark_children_as_incomplete(graph, task)
 
@@ -292,8 +300,11 @@ async def run_task_async(graph, task, args):
 
 
 def mark_children_as_incomplete(graph, task):
+    children = get_all_children(graph, task)
+    logger.info('pid {}: marking children {} of failed task {}'.format(os.getpid(), children, task))
+
     msg = 'Ancestor task {} failed; task not run'.format(task)
-    for child in get_all_children(graph, task):
+    for child in children:
         graph.results[child] = msg
         mark_as_done(graph, child)
     return graph
