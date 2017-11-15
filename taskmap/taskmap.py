@@ -89,9 +89,11 @@ def check_all_keys_are_funcs(funcs, dependencies):
         raise ValueError(msg.format(vacuous_names))
 
 
+# TODO: make parallel, async and parallel async versions
 def run_task(graph, task, args=None):
     args = args or []
     func = graph.funcs[task]
+
     try:
         result = func(*args)
     except Exception as error:
