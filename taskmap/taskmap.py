@@ -113,8 +113,12 @@ def run_task(graph, task, args=None):
     func = graph.funcs[task]
 
     try:
+        logger.info('pid {}: starting task {}'.format(os.getpid(), task))
         result = func(*args)
+        logger.info('pid {}: finished task {}'.format(os.getpid(), task))
     except Exception as error:
+        kwargs = {'exc_info': error}
+        logger.exception('pid {}: failed task {}'.format(os.getpid(), task), kwargs)
         result = error
         graph = mark_children_as_incomplete(graph, task)
 
@@ -182,20 +186,25 @@ def run_parallel(graph, ncores=None, sleep=.1):
             ready = get_ready_tasks(graph)
             for task in ready:
                 mark_as_in_progress(graph, task)
+                logger.info('pid {}: claimed task {}'.format(os.getpid(), task))
                 args = [graph.results[dep] for dep in graph.dependencies[task]
                         if graph.results[dep] is not None]
 
                 def callback(result, task):
                     graph.results[task] = result
                     mark_as_done(graph, task)
+                    logger.info('pid {}: finished task {}'.format(os.getpid(), task))
 
                 def error_callback(result, task):
+                    kwargs = {'exc_info': result}
+                    logger.exception('pid {}: failed task {}'.format(os.getpid(), task), kwargs)
                     mark_children_as_incomplete(graph, task)
                     graph.results[task] = result
                     mark_as_done(graph, task)
 
                 call = partial(callback, task=task)
                 error_call = partial(error_callback, task=task)
+                logger.info('pid {}: starting task {}'.format(os.getpid(), task))
                 pool.apply_async(graph.funcs[task], args=args, callback=call,
                                  error_callback=error_call)
 
@@ -214,6 +223,7 @@ async def scheduler(graph, sleep, loop):
 
         for task in ready:
             mark_as_in_progress(graph, task)
+            logger.info('pid {}: claimed task {}'.format(os.getpid(), task))
             args = [graph.results[dep] for dep in graph.dependencies[task]
                     if graph.results[dep] is not None]
 
