@@ -19,6 +19,7 @@ Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results',
                              'in_progress', 'lock', 'io_bound'])
 
 logger = logging.getLogger('taskmap')
+logger.setLevel(logging.DEBUG)
 
 now = dt.datetime.now()
 fh = logging.FileHandler('taskmap{}.log'.format(now.strftime('%m-%d-%Y--%H.%M.%S')))
