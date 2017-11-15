@@ -144,6 +144,68 @@ def test_run_pass_args():
     assert results == {'a': 5, 'b': 15, 'c': 40}
 
 
+error = RuntimeError('some error')
+
+
+def d():
+    raise error
+
+
+def test_error_handling():
+    # given
+    dependencies = {
+        'c': ['d'],
+        'd': [],
+    }
+
+    funcs = {
+        'd': d,
+        'c': c,
+    }
+
+    graph = taskmap.create_graph(funcs, dependencies)
+
+    # when
+    graph = taskmap.run_task(graph, 'd')
+
+    # then
+    expected = {
+        'd': error,
+        'c': 'Ancestor task d failed; task not run',
+    }
+    assert graph.results == expected
+
+
+def test_get_all_children():
+    # given
+    # given
+    dependencies = {
+        'd': ['a'],
+        'c': ['b'],
+        'b': ['a'],
+        'a': [],
+    }
+
+    funcs = {
+        'a': a,
+        'b': b,
+        'c': c,
+        'd': d,
+    }
+
+    graph = taskmap.create_graph(funcs, dependencies)
+
+    # when
+    a_children = taskmap.get_all_children(graph, 'a')
+    b_children = taskmap.get_all_children(graph, 'b')
+    c_children = taskmap.get_all_children(graph, 'c')
+
+    # then
+    assert a_children == {'b', 'c', 'd'}
+    assert b_children == {'c'}
+    assert c_children == set()
+
+
 def long_task():
     time.sleep(.02)
     return 5
@@ -313,3 +375,4 @@ def test_async_parallel_speed():
 
     # then
     assert end - start < 2
+

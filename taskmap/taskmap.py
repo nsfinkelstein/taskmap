@@ -75,6 +75,36 @@ def check_all_keys_are_funcs(funcs, dependencies):
         raise ValueError(msg.format(vacuous_names))
 
 
+def run_task(graph, task, args=None):
+    args = args or []
+    func = graph.funcs[task]
+    try:
+        result = func(*args)
+    except Exception as error:
+        result = error
+
+        msg = 'Ancestor task {} failed; task not run'.format(task)
+        for child in get_all_children(graph, task):
+            graph.results[child] = msg
+            graph = mark_as_done(graph, child)
+
+    graph.results[task] = result
+    graph = mark_as_done(graph, task)
+    return graph
+
+
+def get_all_children(graph, task):
+    all_children = set()
+    new_children = {k for k, v in graph.dependencies.items() if task in v}
+    while new_children:
+        all_children.update(new_children)
+        new_children = {k for child in new_children
+                        for k, v in graph.dependencies.items() if child in v}
+        new_children = new_children - all_children
+
+    return all_children
+
+
 def get_ready_tasks(graph):
     done = graph.done or set()
     in_progress = graph.in_progress or set()
@@ -112,8 +142,7 @@ def run(graph):
         for task in ready:
             args = [graph.results[dep] for dep in graph.dependencies[task]
                     if graph.results[dep] is not None]
-            graph.results[task] = graph.funcs[task](*args)
-            graph = mark_as_done(graph, task)
+            graph = run_task(graph, task, args)
     return graph.results
 
 
