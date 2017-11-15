@@ -1,4 +1,4 @@
-## dgraph
+## taskmap
 
 This library facilitates keeping track of dependencies between python functions,
 and running them asyncronously and/or in parallel.
@@ -6,7 +6,7 @@ and running them asyncronously and/or in parallel.
 ### Installation
 
 ```
-pip install dgraph
+pip install taskmap
 ```
 
 ### API
@@ -41,14 +41,14 @@ Note that for coroutines, `functools.partial` will not work. If you need to
 create functions that do not take arguments, you can use `paco.partial` from the
 `paco` library.
 
-##### dgraph.run(graph)
+##### taskmap.run(graph)
 
 Runs the graph in a single thread.
 
 
 # TODO: update examples to use funcs argument
 ```.py
-import dgraph
+import taskmap
 
 def a(): return 5
 def b(x): return x + 10
@@ -61,9 +61,9 @@ dependencies = {
 
 }
 
-graph = dgraph.create_graph(dependencies)
+graph = taskmap.create_graph(dependencies)
 
-results = dgraph.run(graph)
+results = taskmap.run(graph)
 
 assert results == {a: 5, b: 15, c: 40}
 ```
@@ -71,31 +71,31 @@ assert results == {a: 5, b: 15, c: 40}
 Note that, for example, the result of `a` is fed to `b`, and the results of `a`
 and `b` are fed to `c`.
 
-##### dgraph.run_async(graph, sleep=.01)
+##### taskmap.run_async(graph, sleep=.01)
 
-Similar to `dgraph.run`, but runs functions asyncronously. All functions must be
+Similar to `taskmap.run`, but runs functions asyncronously. All functions must be
 coroutines. This is useful when many of the functions are bottlenecked by io.
 
 `sleep` here and elsewhere is how long to wait before checking if a new function
 can be run.
 
 
-##### dgraph.run_parallel(graph, ncores=None, sleep=.01)
+##### taskmap.run_parallel(graph, ncores=None, sleep=.01)
 
-Similar to `dgraph.run`, but runs each new function in a new process for up to
+Similar to `taskmap.run`, but runs each new function in a new process for up to
 `ncores` processes as new functions become available. This is useful when many
 of the functions are bottlenecked by cpu.
 
 
-##### dgraph.run_parallel_async(graph, ncores=None, sleep=.01)
+##### taskmap.run_parallel_async(graph, ncores=None, sleep=.01)
 
-Similar to `dgraph.run`, but runs each new function asynchronously on one of up
+Similar to `taskmap.run`, but runs each new function asynchronously on one of up
 to `ncores` cores. All functions must be coroutines. This is useful when
 functions are bottlenecked by both cpu and io.
 
 ```.py
 import time
-import dgraph
+import taskmap
 
 async def ab(x): return x + 10
 async def ac(x, y): return x + y + 20
@@ -107,9 +107,9 @@ dependencies = {
     along_task: [],
 
 }
-graph = dgraph.create_graph(dependencies)
+graph = taskmap.create_graph(dependencies)
 
-results = dgraph.run_async(graph)
+results = taskmap.run_parallel_async(graph)
 
 assert results == {along_task: 5, ab: 15, ac: 40}
 
