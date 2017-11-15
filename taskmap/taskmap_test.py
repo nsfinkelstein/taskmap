@@ -151,7 +151,7 @@ def d():
     raise error
 
 
-def test_error_handling():
+def test_sync_error_handling():
     # given
     dependencies = {
         'c': ['d'],
@@ -163,17 +163,63 @@ def test_error_handling():
         'c': c,
     }
 
-    graph = taskmap.create_graph(funcs, dependencies)
-
     # when
-    graph = taskmap.run_task(graph, 'd')
+    graph = taskmap.create_graph(funcs.copy(), dependencies.copy())
+    graph = taskmap.run(graph)
+
+    graph_parallel = taskmap.create_graph(funcs.copy(), dependencies.copy())
+    graph_parallel = taskmap.run_parallel(graph)
 
     # then
     expected = {
         'd': error,
         'c': 'Ancestor task d failed; task not run',
     }
-    assert graph.results == expected
+    assert graph.results['c'] == expected['c']
+    assert graph.results['d'].__class__ == expected['d'].__class__
+    assert graph.results['d'].args == expected['d'].args
+
+    assert graph_parallel.results['c'] == expected['c']
+    assert graph_parallel.results['d'].__class__ == expected['d'].__class__
+    assert graph_parallel.results['d'].args == expected['d'].args
+
+
+async def e():
+    raise error
+
+
+def test_async_error_handling():
+    # given
+    dependencies = {
+        'c': ['e'],
+        'e': [],
+    }
+
+    funcs = {
+        'e': e,
+        'c': c,
+    }
+
+    # when
+    graph = taskmap.create_graph(funcs.copy(), dependencies.copy())
+    graph = taskmap.run_async(graph)
+
+    graph_parallel = taskmap.create_graph(funcs.copy(), dependencies.copy())
+    graph_parallel = taskmap.run_parallel_async(graph_parallel, ncores=1)
+
+    # then
+    expected = {
+        'e': error,
+        'c': 'Ancestor task e failed; task not run',
+    }
+
+    assert graph.results['c'] == expected['c']
+    assert graph.results['e'].__class__ == expected['e'].__class__
+    assert graph.results['e'].args == expected['e'].args
+
+    assert graph_parallel.results['c'] == expected['c']
+    assert graph_parallel.results['e'].__class__ == expected['e'].__class__
+    assert graph_parallel.results['e'].args == expected['e'].args
 
 
 def test_get_all_children():

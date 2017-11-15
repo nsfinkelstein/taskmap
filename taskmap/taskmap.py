@@ -33,9 +33,10 @@ def build_graph_for_failed_tasks(graph):
     return create_graph(graph.funcs, dependencies, graph.io_bound)
 
 
-def create_graph(funcs, dependencies, io_bound=None):
+def create_graph(funcs, dependencies, io_bound=None, done=None):
     dependencies = {task: list(deps) for task, deps in dependencies.items()}
-    io_bound = set(io_bound) if io_bound else set()
+    io_bound = io_bound or []
+    done = done or []
 
     check_all_tasks_present(dependencies)
     check_cyclic_dependency(dependencies)
@@ -47,7 +48,7 @@ def create_graph(funcs, dependencies, io_bound=None):
             func.bottleneck = None
         marked_funcs[name] = func
 
-    return Graph(funcs=marked_funcs, dependencies=dependencies, done=[],
+    return Graph(funcs=marked_funcs, dependencies=dependencies, done=done,
                  results={}, in_progress=[], lock=0, io_bound=io_bound)
 
 
@@ -89,7 +90,6 @@ def check_all_keys_are_funcs(funcs, dependencies):
         raise ValueError(msg.format(vacuous_names))
 
 
-# TODO: make parallel, async and parallel async versions
 def run_task(graph, task, args=None):
     args = args or []
     func = graph.funcs[task]
@@ -98,11 +98,7 @@ def run_task(graph, task, args=None):
         result = func(*args)
     except Exception as error:
         result = error
-
-        msg = 'Ancestor task {} failed; task not run'.format(task)
-        for child in get_all_children(graph, task):
-            graph.results[child] = msg
-            graph = mark_as_done(graph, child)
+        graph = mark_children_as_incomplete(graph, task)
 
     graph.results[task] = result
     graph = mark_as_done(graph, task)
@@ -175,8 +171,15 @@ def run_parallel(graph, ncores=None, sleep=.1):
                     graph.results[task] = result
                     mark_as_done(graph, task)
 
+                def error_callback(result, task):
+                    mark_children_as_incomplete(graph, task)
+                    graph.results[task] = result
+                    mark_as_done(graph, task)
+
                 call = partial(callback, task=task)
-                pool.apply_async(graph.funcs[task], args=args, callback=call)
+                error_call = partial(error_callback, task=task)
+                pool.apply_async(graph.funcs[task], args=args, callback=call,
+                                 error_callback=error_call)
 
             time.sleep(sleep)
     return graph
@@ -196,12 +199,7 @@ async def scheduler(graph, sleep, loop):
             args = [graph.results[dep] for dep in graph.dependencies[task]
                     if graph.results[dep] is not None]
 
-            async def coro(task):
-                result = await graph.funcs[task](*args)
-                graph.results[task] = result
-                mark_as_done(graph, task)
-
-            asyncio.ensure_future(coro(task), loop=loop)
+            asyncio.ensure_future(run_task_async(graph, task, args), loop=loop)
         await asyncio.sleep(sleep)
 
 
@@ -216,8 +214,9 @@ def run_async(graph, sleep=.1, scheduler=scheduler):
 def create_parallel_compatible_graph(graph, manager):
     deps = manager.dict(graph.dependencies)
     funcs = manager.dict(graph.funcs)
+    done = manager.list(graph.done)
     io_bound = manager.list(graph.io_bound)
-    return Graph(funcs=funcs, dependencies=deps, done=manager.list(),
+    return Graph(funcs=funcs, dependencies=deps, done=done,
                  results=manager.dict(), in_progress=manager.list(),
                  lock=manager.Value(int, 0), io_bound=io_bound)
 
@@ -248,7 +247,7 @@ async def parallel_scheduler(graph, sleep, loop):
         # wait to see if some other pid got assigned due to race condition
         # i.e. if the conditional check above passed 'simultaneously' in two
         # processes, the second one wins (the value itself is processes safe)
-        time.sleep(sleep)
+        time.sleep(sleep * .5)
 
         if graph.lock.value != os.getpid():
             await asyncio.sleep(sleep)
@@ -272,12 +271,29 @@ async def parallel_scheduler(graph, sleep, loop):
         args = [graph.results[dep] for dep in graph.dependencies[task]
                 if graph.results[dep] is not None]
 
-        async def coro(task):
-            result = await graph.funcs[task](*args)
-            graph.results[task] = result
-            mark_as_done(graph, task)
-
-        asyncio.ensure_future(coro(task), loop=loop)
+        asyncio.ensure_future(run_task_async(graph, task, args), loop=loop)
 
         graph.lock.value = 0
         await asyncio.sleep(sleep)
+
+
+async def run_task_async(graph, task, args):
+    func = graph.funcs[task]
+
+    try:
+        result = await func(*args)
+    except Exception as error:
+        result = error
+        graph = mark_children_as_incomplete(graph, task)
+
+    graph.results[task] = result
+    graph = mark_as_done(graph, task)
+    return graph
+
+
+def mark_children_as_incomplete(graph, task):
+    msg = 'Ancestor task {} failed; task not run'.format(task)
+    for child in get_all_children(graph, task):
+        graph.results[child] = msg
+        mark_as_done(graph, child)
+    return graph
