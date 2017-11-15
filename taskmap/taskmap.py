@@ -326,6 +326,10 @@ async def run_task_async(graph, task, args):
 
 def mark_children_as_incomplete(graph, task):
     children = get_all_children(graph, task)
+
+    if not children:
+        return graph
+
     logger.info('pid {}: marking children {} of failed task {}'.format(os.getpid(), children, task))
 
     msg = 'Ancestor task {} failed; task not run'.format(task)
