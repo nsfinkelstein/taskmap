@@ -215,8 +215,8 @@ def test_sync_error_handling():
     assert graph_parallel.results['d'].args == expected['d'].args
 
 
-async def w():
-    pass
+async def control():
+    return 5
 
 
 async def e():
@@ -228,11 +228,13 @@ def test_async_error_handling():
     dependencies = {
         'c': ['e'],
         'e': [],
+        'control': [],
     }
 
     funcs = {
         'e': e,
         'c': c,
+        'control': control,
     }
 
     # when
@@ -245,16 +247,19 @@ def test_async_error_handling():
     # then
     expected = {
         'e': error,
+        'control': 5,
         'c': 'Ancestor task e failed; task not run',
     }
 
     assert graph.results['c'] == expected['c']
     assert graph.results['e'].__class__ == expected['e'].__class__
     assert graph.results['e'].args == expected['e'].args
+    assert graph.results['control'] == 5
 
     assert graph_parallel.results['c'] == expected['c']
     assert graph_parallel.results['e'].__class__ == expected['e'].__class__
     assert graph_parallel.results['e'].args == expected['e'].args
+    assert graph.results['control'] == 5
 
 
 def test_rebuilding_graph_from_failure():
