@@ -1,8 +1,12 @@
 import asyncio
+import logging
+import taskmap
 import pytest
 import time
 
-import taskmap
+
+# disable logging during tests
+logging.disable(logging.CRITICAL)
 
 
 def a():
@@ -393,19 +397,19 @@ def test_parallel_speed():
 
 
 async def r():
-    await asyncio.sleep(1)
+    await asyncio.sleep(2)
 
 
 async def t():
-    await asyncio.sleep(1)
+    await asyncio.sleep(2)
 
 
 async def w():
-    time.sleep(1)
+    time.sleep(2)
 
 
 async def p():
-    time.sleep(1)
+    time.sleep(2)
 
 
 def test_async_parallel_speed():
@@ -420,4 +424,4 @@ def test_async_parallel_speed():
     end = time.time()
 
     # then
-    assert end - start < 2
+    assert end - start < 4

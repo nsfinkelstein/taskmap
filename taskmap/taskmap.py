@@ -10,7 +10,6 @@ import datetime as dt
 import multiprocess as mp
 import multiprocessing_logging as mplogging
 
-
 # dependencies: map from each task to a list of tasks on which it depends
 # done: set of names of functions that have been complete
 # results: map from task to result of function call
