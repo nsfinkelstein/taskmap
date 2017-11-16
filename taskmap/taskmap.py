@@ -151,11 +151,6 @@ def get_ready_tasks(graph):
 
 def mark_as_done(graph, task):
     graph.done.append(task)
-    try:
-        graph.in_progress.remove(task)
-    except ValueError:
-        pass
-
     return graph
 
 
