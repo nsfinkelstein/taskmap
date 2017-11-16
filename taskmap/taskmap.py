@@ -52,9 +52,9 @@ def build_graph_for_failed_tasks(graph):
 
 def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):
     dependencies = {task: list(deps) for task, deps in dependencies.items()}
-    io_bound = io_bound or []
-    done = done or []
-    results = results or {}
+    io_bound = list(io_bound) or []
+    done = list(done) or []
+    results = dict(results) or {}
 
     check_all_tasks_present(dependencies)
     check_cyclic_dependency(dependencies)
