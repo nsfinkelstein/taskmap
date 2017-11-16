@@ -1,12 +1,8 @@
-import logging
 import asyncio
 import pytest
 import time
 
 import taskmap
-
-# disable logging during tests
-logging.disable(logging.CRITICAL)
 
 
 def a():
@@ -425,14 +421,3 @@ def test_async_parallel_speed():
 
     # then
     assert end - start < 2
-
-
-def test_passing_done_allows_absent_tasks():
-    funcs = {'r': r, 't': t}
-    dependencies = {'r': ['t']}
-
-    with pytest.raises(ValueError):
-        taskmap.create_graph(funcs, dependencies)
-
-    done = ['t']
-    taskmap.create_graph(funcs, dependencies, done=done)

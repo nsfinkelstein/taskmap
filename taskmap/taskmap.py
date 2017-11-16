@@ -86,21 +86,13 @@ def check_cyclic_dependency(dependencies):
 
             new_parents = set()
             for parent in parents:
-                parent_ancestors = ancestry.get(parent, None)
-                if parent_ancestors is None:
-                    try:
-                        parent_ancestors = dependencies[parent]
-                    except KeyError:
-                        # depends on something not in dict, if this is a
-                        # problem it will be caught by check_all_tasks_present
-                        parent_ancestors = set()
+                new_parents.update(ancestry.get(parent, dependencies[parent]))
 
-                new_parents.update(parent_ancestors)
             parents = new_parents - already_seen
 
 
 def check_all_tasks_present(deps, done):
-    absent_tasks = set(chain(*deps.values())) - (set(deps.keys()) | set(done))
+    absent_tasks = set(chain(*deps.values())) - set(deps.keys() - set(done))
 
     if absent_tasks:
         msg = ' '.join(['Tasks {} are depended upon, but are not present as',
