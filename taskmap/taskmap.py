@@ -56,7 +56,7 @@ def create_graph(funcs, dependencies, io_bound=None, done=None):
     io_bound = io_bound or []
     done = done or []
 
-    check_all_tasks_present(dependencies)
+    check_all_tasks_present(dependencies, done)
     check_cyclic_dependency(dependencies)
     check_all_keys_are_funcs(funcs, dependencies)
 
@@ -91,8 +91,8 @@ def check_cyclic_dependency(dependencies):
             parents = new_parents - already_seen
 
 
-def check_all_tasks_present(deps):
-    absent_tasks = set(chain(*deps.values())) - set(deps.keys())
+def check_all_tasks_present(deps, done):
+    absent_tasks = set(chain(*deps.values())) - set(deps.keys() - set(done))
 
     if absent_tasks:
         msg = ' '.join(['Tasks {} are depended upon, but are not present as',
