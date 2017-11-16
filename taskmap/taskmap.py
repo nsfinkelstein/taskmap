@@ -50,10 +50,13 @@ def build_graph_for_failed_tasks(graph):
     return create_graph(graph.funcs, dependencies, graph.io_bound)
 
 
-def create_graph(funcs, dependencies, io_bound=None, done=None):
+def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):
     dependencies = {task: list(deps) for task, deps in dependencies.items()}
     io_bound = io_bound or []
     done = done or []
+    filled_results = {task: None for task in done}
+    if results:
+        filled_results.update(results)
 
     check_all_tasks_present(dependencies)
     check_cyclic_dependency(dependencies)
@@ -65,8 +68,8 @@ def create_graph(funcs, dependencies, io_bound=None, done=None):
             func.bottleneck = None
         marked_funcs[name] = func
 
-    return Graph(funcs=marked_funcs, dependencies=dependencies, done=done,
-                 results={}, in_progress=[], lock=0, io_bound=io_bound)
+    return Graph(funcs=marked_funcs, dependencies=dependencies, in_progress=[],
+                 done=done, results=filled_results, lock=0, io_bound=io_bound)
 
 
 def check_cyclic_dependency(dependencies):
