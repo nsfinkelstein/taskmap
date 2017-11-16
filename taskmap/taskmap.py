@@ -54,10 +54,7 @@ def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):
     dependencies = {task: list(deps) for task, deps in dependencies.items()}
     io_bound = io_bound or []
     done = done or []
-    filled_results = {task: None for task in done}
-
-    if results:
-        filled_results.update(results)
+    results = results or {}
 
     check_all_tasks_present(dependencies)
     check_cyclic_dependency(dependencies)
@@ -70,7 +67,7 @@ def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):
         marked_funcs[name] = func
 
     return Graph(funcs=marked_funcs, dependencies=dependencies, in_progress=[],
-                 done=done, results=filled_results, lock=0, io_bound=io_bound)
+                 done=done, results=results, lock=0, io_bound=io_bound)
 
 
 def check_cyclic_dependency(dependencies):
@@ -172,8 +169,8 @@ def run(graph):
     while not all_done(graph):
         ready = get_ready_tasks(graph)
         for task in ready:
-            args = [graph.results[dep] for dep in graph.dependencies[task]
-                    if graph.results[dep] is not None]
+            args = get_args(graph, task)
+
             graph = run_task(graph, task, args)
     return graph
 
@@ -185,8 +182,7 @@ def run_parallel(graph, ncores=None, sleep=.1):
             for task in ready:
                 mark_as_in_progress(graph, task)
                 logger.info('pid {}: claimed task {}'.format(os.getpid(), task))
-                args = [graph.results[dep] for dep in graph.dependencies[task]
-                        if graph.results[dep] is not None]
+                args = get_args(graph, task)
 
                 def callback(result, task):
                     graph.results[task] = result
@@ -222,8 +218,7 @@ async def scheduler(graph, sleep, loop):
         for task in ready:
             mark_as_in_progress(graph, task)
             logger.info('pid {}: claimed task {}'.format(os.getpid(), task))
-            args = [graph.results[dep] for dep in graph.dependencies[task]
-                    if graph.results[dep] is not None]
+            args = get_args(graph, task)
 
             asyncio.ensure_future(run_task_async(graph, task, args), loop=loop)
         await asyncio.sleep(sleep)
@@ -295,8 +290,7 @@ async def parallel_scheduler(graph, sleep, loop):
             await asyncio.sleep(sleep)
             continue
 
-        args = [graph.results[dep] for dep in graph.dependencies[task]
-                if graph.results[dep] is not None]
+        args = get_args(graph, task)
 
         asyncio.ensure_future(run_task_async(graph, task, args), loop=loop)
 
@@ -335,3 +329,8 @@ def mark_children_as_incomplete(graph, task):
         graph.results[child] = msg
         mark_as_done(graph, child)
     return graph
+
+
+def get_args(graph, task):
+    return [graph.results.get(dep) for dep in graph.dependencies[task]
+            if graph.results.get(dep) is not None]
