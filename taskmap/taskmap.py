@@ -275,7 +275,7 @@ async def parallel_scheduler(graph, sleep, loop):
         # wait to see if some other pid got assigned due to race condition
         # i.e. if the conditional check above passed 'simultaneously' in two
         # processes, the second one wins (the value itself is processes safe)
-        time.sleep(sleep * .5)
+        await asyncio.sleep(sleep * .5)
 
         if graph.lock.value != os.getpid():
             await asyncio.sleep(sleep)
