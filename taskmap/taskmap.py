@@ -55,6 +55,7 @@ def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):
     io_bound = io_bound or []
     done = done or []
     filled_results = {task: None for task in done}
+
     if results:
         filled_results.update(results)
 

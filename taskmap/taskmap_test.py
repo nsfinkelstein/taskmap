@@ -44,6 +44,33 @@ def test_graph_ready():
     assert results == {'c'}
 
 
+def test_tasks_can_be_marked_done():
+    # given
+    funcs = {'a': a, 'b': b}
+    dependencies = {'a': ['b'], 'b': []}
+
+    # when
+    graph = taskmap.create_graph(funcs, dependencies, done=['b'])
+
+    # then
+    assert taskmap.get_ready_tasks(graph) == {'a'}
+
+
+def test_cached_results_are_used():
+    # given
+    funcs = {'a': a, 'b': b}
+    dependencies = {'b': ['a'], 'a': []}
+    results = {'a': 5}
+
+    graph = taskmap.create_graph(funcs, dependencies, done=['a'], results=results)
+
+    # when
+    graph = taskmap.run(graph)
+
+    # then
+    assert graph.results['b'] == 15
+
+
 def test_graph_ready_after_task_completed():
     # given
     dependencies = {
@@ -425,3 +452,4 @@ def test_async_parallel_speed():
 
     # then
     assert end - start < 4
+
