@@ -42,12 +42,18 @@ def build_graph_for_failed_tasks(graph):
     if there were errors - only the failed tasks and their children will
     be included in the new graph. otherwise the new graph will be empty
     """
-    failed_tasks = [task for task, res in graph.result.items()
-                    if isinstance(res, Exception)]
+    failed_tasks = set([task for task, res in graph.results.items()
+                        if isinstance(res, Exception)])
 
-    rerun = set(chain(*[get_all_children(task) for task in failed_tasks]))
-    dependencies = {k: v for k, v in graph.dependencies.items() if k in rerun}
-    return create_graph(graph.funcs, dependencies, graph.io_bound)
+    children = set(chain(*[get_all_children(graph, task) for task in failed_tasks]))
+    rerun = children | failed_tasks
+
+    for task in rerun:
+        graph.results[task] = None
+        graph.done.remove(task)
+
+    return create_graph(graph.funcs, graph.dependencies, graph.io_bound,
+                        graph.done, graph.results)
 
 
 def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):

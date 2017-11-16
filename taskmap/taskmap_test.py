@@ -215,6 +215,10 @@ def test_sync_error_handling():
     assert graph_parallel.results['d'].args == expected['d'].args
 
 
+async def w():
+    pass
+
+
 async def e():
     raise error
 
@@ -251,6 +255,30 @@ def test_async_error_handling():
     assert graph_parallel.results['c'] == expected['c']
     assert graph_parallel.results['e'].__class__ == expected['e'].__class__
     assert graph_parallel.results['e'].args == expected['e'].args
+
+
+def test_rebuilding_graph_from_failure():
+    # given
+    dependencies = {
+        'c': ['e'],
+        'e': [],
+        'w': [],
+    }
+
+    funcs = {
+        'e': e,
+        'c': c,
+        'w': w,
+    }
+
+    graph = taskmap.create_graph(funcs.copy(), dependencies.copy())
+    graph = taskmap.run_parallel_async(graph)
+
+    # when
+    new_graph = taskmap.build_graph_for_failed_tasks(graph)
+
+    # then
+    assert new_graph.done == ['w']
 
 
 def test_get_all_children():
