@@ -1,2 +1,3 @@
 from .taskmap import create_graph, get_ready_tasks, mark_as_done, run_task,  \
-    run, run_parallel, run_async, run_parallel_async, get_all_children
+    run, run_parallel, run_async, run_parallel_async, get_all_children, \
+    build_graph_for_failed_tasks
