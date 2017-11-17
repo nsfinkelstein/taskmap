@@ -243,8 +243,9 @@ def create_parallel_compatible_graph(graph, manager):
     funcs = manager.dict(graph.funcs)
     done = manager.list(graph.done)
     io_bound = manager.list(graph.io_bound)
+    results = manager.dict(graph.results)
     return Graph(funcs=funcs, dependencies=deps, done=done,
-                 results=manager.dict(), in_progress=manager.list(),
+                 results=results, in_progress=manager.list(),
                  lock=manager.Value(int, 0), io_bound=io_bound)
 
 
