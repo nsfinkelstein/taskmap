@@ -115,3 +115,18 @@ assert results == {along_task: 5, ab: 15, ac: 40}
 
 ```
 
+
+##### taskmap.build_graph_for_failed_tasks
+
+This function allows you to rebuild a graph to only run the tasks that have
+failed. A common pattern is something like:
+
+```.py
+result_graph = taskmap.run_parallel_async(graph)
+# failures abound
+
+new_graph = taskmap.build_graph_for_failed_tasks(result_graph)
+new_result_grpah = taskmpa.run_parallel_async(new_graph)
+```
+
+
