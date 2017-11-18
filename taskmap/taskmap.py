@@ -66,13 +66,7 @@ def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):
     check_cyclic_dependency(dependencies)
     check_all_keys_are_funcs(funcs, dependencies)
 
-    marked_funcs = {}
-    for name, func in funcs.items():
-        if not hasattr(func, 'bottleneck'):
-            func.bottleneck = None
-        marked_funcs[name] = func
-
-    return Graph(funcs=marked_funcs, dependencies=dependencies, in_progress=[],
+    return Graph(funcs=funcs, dependencies=dependencies, in_progress=[],
                  done=list(done), results=results, lock=0, io_bound=io_bound)
 
 
