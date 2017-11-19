@@ -19,14 +19,15 @@ pipelines will have a significant number of tasks that are IO bound. Running
 these tasks in parallel will still leave lots of unused processing time.
 
 That's where taskmap comes in. It's designed to help you get the most out of a
-single machine. You specify the dependency graph for you tasks (which are just
+single machine. You specify the dependency graph for your tasks (which are just
 native python functions or coroutines), and optionally which ones are IO bound. 
-The tasks can then be asynchronously and in parallel, making sure that no core
+The tasks can then be run asynchronously and in parallel, making sure that no core
 sits unused while there are tasks it could be running.
 
 Because taskmap keeps track of the dependency graph, it is easy to only rerun
 failed tasks. It's also possible to change the functions corresponding to tasks
-and rerun only those changed tasks and their children.
+and rerun only those changed tasks and their children. You can then cache your
+results to pick up where you left off.
 
 ## Installation
 
