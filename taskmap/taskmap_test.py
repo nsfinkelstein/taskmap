@@ -4,7 +4,6 @@ import taskmap
 import pytest
 import time
 
-
 # disable logging during tests
 logging.disable(logging.CRITICAL)
 
@@ -62,7 +61,8 @@ def test_cached_results_are_used():
     dependencies = {'b': ['a'], 'a': []}
     results = {'a': 5}
 
-    graph = taskmap.create_graph(funcs, dependencies, done=['a'], results=results)
+    graph = taskmap.create_graph(
+        funcs, dependencies, done=['a'], results=results)
 
     # when
     graph = taskmap.run(graph)
@@ -157,7 +157,6 @@ def test_run_pass_args():
         'c': ['a', 'b'],
         'b': ['a'],
         'a': [],
-
     }
 
     funcs = {
@@ -327,7 +326,6 @@ def test_run_parallel():
         'c': ['long_task', 'b'],
         'b': ['long_task'],
         'long_task': [],
-
     }
 
     funcs = {
@@ -364,7 +362,6 @@ def test_run_async():
         'ac': ['along_task', 'ab'],
         'ab': ['along_task'],
         'along_task': [],
-
     }
 
     funcs = {
@@ -388,7 +385,6 @@ def test_run_parllel_async():
         'ac': ['along_task', 'ab'],
         'ab': ['along_task'],
         'along_task': [],
-
     }
 
     funcs = {
@@ -485,4 +481,3 @@ def test_async_parallel_speed():
 
     # then
     assert end - start < 4
-
