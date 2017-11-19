@@ -7,13 +7,7 @@ python:
 install:
   - pip install --editable ./
   - pip install pytest
-  - pip install pytest-cov
-  - pip install codecov
   
 # command to run tests
 script:
-  # - coverage run taskmap/taskmap_test.py
-  - py.test -v --cov-config .coveragerc taskmap/taskmap_test.py
-
-after_success:
-  - coverage combine && codecov
+  - py.test
