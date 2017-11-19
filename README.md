@@ -1,6 +1,4 @@
 [![Build Status](https://travis-ci.org/n-s-f/taskmap.svg?branch=master)](https://travis-ci.org/n-s-f/taskmap)
-[![Coverage Status](https://img.shields.io/codecov/c/github/n-s-f/taskmap/master.svg)](https://codecov.io/github/n-s-f/taskmap?branch=master)
-
 
 # taskmap
 
