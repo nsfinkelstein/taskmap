@@ -14,20 +14,24 @@ import multiprocessing_logging as mplogging
 # done: set of names of functions that have been complete
 # results: map from task to result of function call
 # in_progress: tasks currently in progress (for async and parallel)
-Graph = namedtuple('graph', ['funcs', 'dependencies', 'done', 'results',
-                             'in_progress', 'lock', 'io_bound'])
+Graph = namedtuple('graph', [
+    'funcs', 'dependencies', 'done', 'results', 'in_progress', 'lock',
+    'io_bound'
+])
 
 logger = logging.getLogger('taskmap')
 logger.setLevel(logging.DEBUG)
 
 now = dt.datetime.now()
-fh = logging.FileHandler('taskmap{}.log'.format(now.strftime('%m-%d-%Y--%H.%M.%S')))
+log_frmt = 'taskmap{}.log'.format(now.strftime('%m-%d-%Y--%H.%M.%S'))
+fh = logging.FileHandler(log_frmt)
+
 fh.setLevel(logging.DEBUG)
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter(log_frmt)
 ch.setFormatter(formatter)
 fh.setFormatter(formatter)
 
@@ -36,17 +40,23 @@ logger.addHandler(fh)
 mplogging.install_mp_handler(logger)
 
 
-def build_graph_for_failed_tasks(graph):
+def reset_failed_tasks(graph):
     """
     create a new graph based on the outcomes of a previous run.
     if there were errors - only the failed tasks and their children will
     be included in the new graph. otherwise the new graph will be empty
     """
-    failed_tasks = set([task for task, res in graph.results.items()
-                        if isinstance(res, Exception)])
+    failed_tasks = set([
+        task for task, res in graph.results.items()
+        if isinstance(res, Exception)
+    ])
 
-    children = set(chain(*[get_all_children(graph, task) for task in failed_tasks]))
-    rerun = children | failed_tasks
+    return reset_tasks(graph, failed_tasks)
+
+
+def reset_tasks(graph, tasks):
+    children = set(chain(* [get_all_children(graph, task) for task in tasks]))
+    rerun = children | tasks
 
     for task in rerun:
         graph.results[task] = None
@@ -66,8 +76,14 @@ def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):
     check_cyclic_dependency(dependencies)
     check_all_keys_are_funcs(funcs, dependencies)
 
-    return Graph(funcs=funcs, dependencies=dependencies, in_progress=[],
-                 done=list(done), results=results, lock=0, io_bound=io_bound)
+    return Graph(
+        funcs=funcs,
+        dependencies=dependencies,
+        in_progress=[],
+        done=list(done),
+        results=results,
+        lock=0,
+        io_bound=io_bound)
 
 
 def check_cyclic_dependency(dependencies):
@@ -95,16 +111,20 @@ def check_all_tasks_present(deps):
     absent_tasks = set(chain(*deps.values())) - set(deps.keys())
 
     if absent_tasks:
-        msg = ' '.join(['Tasks {} are depended upon, but are not present as',
-                        'keys in dependencies dictionary.'])
+        msg = ' '.join([
+            'Tasks {} are depended upon, but are not present as',
+            'keys in dependencies dictionary.'
+        ])
         raise ValueError(msg.format(absent_tasks))
 
 
 def check_all_keys_are_funcs(funcs, dependencies):
     vacuous_names = set(dependencies.keys()) - set(funcs.keys())
     if vacuous_names:
-        msg = ' '.join(['Tasks {} are listed in the dependencies dict, but do',
-                        'not correspond to functions in the funcs dict.'])
+        msg = ' '.join([
+            'Tasks {} are listed in the dependencies dict, but do',
+            'not correspond to functions in the funcs dict.'
+        ])
         raise ValueError(msg.format(vacuous_names))
 
 
@@ -118,7 +138,8 @@ def run_task(graph, task, args=None):
         logger.info('pid {}: finished task {}'.format(os.getpid(), task))
     except Exception as error:
         kwargs = {'exc_info': error}
-        logger.exception('pid {}: failed task {}'.format(os.getpid(), task), kwargs)
+        logger.exception('pid {}: failed task {}'.format(os.getpid(), task),
+                         kwargs)
         result = error
         graph = mark_children_as_incomplete(graph, task)
 
@@ -132,8 +153,11 @@ def get_all_children(graph, task):
     new_children = {k for k, v in graph.dependencies.items() if task in v}
     while new_children:
         all_children.update(new_children)
-        new_children = {k for child in new_children
-                        for k, v in graph.dependencies.items() if child in v}
+        new_children = {
+            k
+            for child in new_children for k, v in graph.dependencies.items()
+            if child in v
+        }
         new_children = new_children - all_children
 
     return all_children
@@ -181,26 +205,33 @@ def run_parallel(graph, ncores=None, sleep=.1):
             ready = get_ready_tasks(graph)
             for task in ready:
                 mark_as_in_progress(graph, task)
-                logger.info('pid {}: claimed task {}'.format(os.getpid(), task))
+                logger.info(
+                    'pid {}: claimed task {}'.format(os.getpid(), task))
                 args = get_args(graph, task)
 
                 def callback(result, task):
                     graph.results[task] = result
                     mark_as_done(graph, task)
-                    logger.info('pid {}: finished task {}'.format(os.getpid(), task))
+                    logger.info(
+                        'pid {}: finished task {}'.format(os.getpid(), task))
 
                 def error_callback(result, task):
                     kwargs = {'exc_info': result}
-                    logger.exception('pid {}: failed task {}'.format(os.getpid(), task), kwargs)
+                    logger.exception('pid {}: failed task {}'.format(
+                        os.getpid(), task), kwargs)
                     mark_children_as_incomplete(graph, task)
                     graph.results[task] = result
                     mark_as_done(graph, task)
 
                 call = partial(callback, task=task)
                 error_call = partial(error_callback, task=task)
-                logger.info('pid {}: starting task {}'.format(os.getpid(), task))
-                pool.apply_async(graph.funcs[task], args=args, callback=call,
-                                 error_callback=error_call)
+                logger.info(
+                    'pid {}: starting task {}'.format(os.getpid(), task))
+                pool.apply_async(
+                    graph.funcs[task],
+                    args=args,
+                    callback=call,
+                    error_callback=error_call)
 
             time.sleep(sleep)
     return graph
@@ -238,15 +269,25 @@ def create_parallel_compatible_graph(graph, manager):
     done = manager.list(graph.done)
     io_bound = manager.list(graph.io_bound)
     results = manager.dict(graph.results)
-    return Graph(funcs=funcs, dependencies=deps, done=done,
-                 results=results, in_progress=manager.list(),
-                 lock=manager.Value(int, 0), io_bound=io_bound)
+    return Graph(
+        funcs=funcs,
+        dependencies=deps,
+        done=done,
+        results=results,
+        in_progress=manager.list(),
+        lock=manager.Value(int, 0),
+        io_bound=io_bound)
 
 
 def recover_values_from_manager(graph):
-    return Graph(dependencies=dict(graph.dependencies), in_progress=[],
-                 funcs=dict(graph.funcs), done=list(graph.done), lock=0,
-                 results=dict(graph.results), io_bound=list(graph.io_bound))
+    return Graph(
+        dependencies=dict(graph.dependencies),
+        in_progress=[],
+        funcs=dict(graph.funcs),
+        done=list(graph.done),
+        lock=0,
+        results=dict(graph.results),
+        io_bound=list(graph.io_bound))
 
 
 def run_parallel_async(graph, ncores=None, sleep=.05):
@@ -256,7 +297,8 @@ def run_parallel_async(graph, ncores=None, sleep=.05):
         graph = create_parallel_compatible_graph(graph, manager)
 
         with mp.Pool(ncores) as pool:
-            pool.starmap(run_async, repeat([graph, sleep, parallel_scheduler], ncores))
+            pool.starmap(run_async,
+                         repeat([graph, sleep, parallel_scheduler], ncores))
 
         return recover_values_from_manager(graph)
 
@@ -308,7 +350,8 @@ async def run_task_async(graph, task, args):
         logger.info('pid {}: finished task {}'.format(os.getpid(), task))
     except Exception as error:
         kwargs = {'exc_info': error}
-        logger.exception('pid {}: failed task {}'.format(os.getpid(), task), kwargs)
+        logger.exception('pid {}: failed task {}'.format(os.getpid(), task),
+                         kwargs)
         result = error
         graph = mark_children_as_incomplete(graph, task)
 
@@ -323,7 +366,8 @@ def mark_children_as_incomplete(graph, task):
     if not children:
         return graph
 
-    logger.info('pid {}: marking children {} of failed task {}'.format(os.getpid(), children, task))
+    logger.info('pid {}: marking children {} of failed task {}'.format(
+        os.getpid(), children, task))
 
     msg = 'Ancestor task {} failed; task not run'.format(task)
     for child in children:
@@ -333,5 +377,7 @@ def mark_children_as_incomplete(graph, task):
 
 
 def get_args(graph, task):
-    return [graph.results.get(dep) for dep in graph.dependencies[task]
-            if graph.results.get(dep) is not None]
+    return [
+        graph.results.get(dep) for dep in graph.dependencies[task]
+        if graph.results.get(dep) is not None
+    ]

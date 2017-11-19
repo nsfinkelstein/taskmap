@@ -115,11 +115,16 @@ assert results == {along_task: 5, ab: 15, ac: 40}
 
 ```
 
+##### taskmap.reset_tasks
 
-##### taskmap.build_graph_for_failed_tasks
+This function allows you to rebuild a graph to only run a subset of tasks, and
+their children. This is useful if you change some of the tasks in the `'funcs'`
+and want to rerun those tasks and the tasks that depend on their outcomes.
+
+##### taskmap.reset_failed_tasks
 
 This function allows you to rebuild a graph to only run the tasks that have
-failed. A common pattern is something like:
+failed and their children. A common pattern is something like:
 
 ```.py
 result_graph = taskmap.run_parallel_async(graph)
