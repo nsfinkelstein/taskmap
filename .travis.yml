@@ -12,8 +12,8 @@ install:
   
 # command to run tests
 script:
-  - coverage run taskmap/taskmap_test.py
-  # - py.test -v --cov-config .coveragerc taskmap/taskmap_test.py
+  # - coverage run taskmap/taskmap_test.py
+  - py.test -v --cov-config .coveragerc taskmap/taskmap_test.py
 
 after_success:
   - coverage combine && codecov
