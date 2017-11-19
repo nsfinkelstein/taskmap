@@ -8,11 +8,11 @@ install:
   - pip install .
   - pip install pytest
   - pip install pytest-cov
+  - pip install codecov
   
 # command to run tests
-script: py.test --cov=./
+script:
+  - coverage run taskmap/taskmap_test.py
 
 after_success:
   - codecov
-
-
