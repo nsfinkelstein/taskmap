@@ -166,7 +166,7 @@ and want to rerun those tasks and the tasks that depend on their outcomes.
 
 Here's an example.
 
-```
+```.py
 result_graph = taskmap.run_parallel_async(graph)
 
 # change the function corresponding to some task name
