@@ -133,5 +133,3 @@ result_graph = taskmap.run_parallel_async(graph)
 new_graph = taskmap.build_graph_for_failed_tasks(result_graph)
 new_result_grpah = taskmpa.run_parallel_async(new_graph)
 ```
-
-
