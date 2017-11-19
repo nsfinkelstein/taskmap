@@ -80,47 +80,46 @@ More examples can be found in the tests.
 
 ## API
 
+### Creating and Running the Graph
+
 #### create_graph(funcs, dependencies, io_bound=None, done=None, results=None)
 
 Creates the dependency graph.
 
-The `dependencies` argument is a dictionary that maps task names to a collection
-of the names of the tasks they depend on. The keys in the dictionary are
-functions and the values are list of functions. The order matters because the
-the results of the functions that a function depends on will be fed in to that
-function in the order that the functions are listed in the dependencies dict.
-Functions that return None will not have their results fed into functions that
-depend on them.
+`dependencies`: a dictionary that maps task names to a list of dependencies. The
+results of those dependencies will be fed into the function in the order in
+which they appear. Tasks that return `None` will not have the results fed into
+the tasks that depend on them.
 
-The `funcs` argument is a dictionary that maps the names of the tasks to
-functions. Each function should accept the same number of arguments as it has
-dependencies that return non `None` values.
+`funcs`: a dictionary that maps the names of the tasks to functions. Each
+function should accept the same number of arguments as it has dependencies that
+return non `None` values.
 
-The `io_bound` argument is a list of the names of the tasks that are io bound.
-These will be picked up first, so that the cpu bound tasks can be executed while
-waiting on results from e.g. network or database calls.
+`io_bound`: a list of the names of the tasks that are io bound. These will be
+picked up first, so that the cpu bound tasks can be executed while waiting on
+results from e.g. network or database calls.
 
-The `done` argument is a list of the names of tasks that are already done. These
-tasks will not be run if any of the `run*(graph)` functions are called with this
-graph. This is a way to run only part of a dependency graph without changing the
-code that creates the `dependencies` or `funcs` arguments.
+`done`: a list of the names of tasks that are already done. These tasks will not
+be run if any of the `run*(graph)` functions are called with this graph. This is
+a way to run only part of a dependency graph without changing the code that
+creates the `dependencies` or `funcs` arguments.
 
-The `results` argument is a dictionary mapping the names of tasks to their
-results. This is useful if the tasks listed in the `done` arguments have results
-that their children will need passed to them.
+`results`: a dictionary mapping the names of tasks to their results. This is
+useful if the tasks listed in the `done` arguments have results that their
+children will need passed to them.
 
-The `create_graph` function will throw for a dependency dictionary with cyclic
-dependencies, or if there are functions that are depended on but are not present
-as keys in the dependencies dictionary.
+This function will throw for a dependency dictionary with cyclic dependencies,
+or if there are functions that are depended on but are not present as keys in
+the dependencies dictionary.
 
 Note that for coroutines, `functools.partial` will not work. If you need to
-create partial functions to use as tasks, you can use `paco.partial` from the
-`paco` library.
+create partial functions to use as tasks, you can use `partial` from the `paco`
+library.
 
 #### taskmap.run_parallel_async(graph, sleep=0.1, ncores=None)
 
-Runs the graph in a single thread. All tasks must be python coroutines. This is
-especially useful when tasks are bottlenecked by both io and cpu.
+Runs the graph asynchronously across multiple cores. All tasks must be python
+coroutines. This can be used when tasks are bottlenecked by both io and cpu.
 
 `sleep` determines how long each process waits between checks to see if a new
 task has become available.
@@ -135,18 +134,21 @@ bottlenecked by io.
 
 #### taskmap.run_parallel(graph, sleep=.01, ncores=None)
 
-The tasks must be normal python functions, and are not run asynchronously. This
-can be used if all tasks are cpu bottlenecked.
+The tasks must be normal python functions, and are not run in parallel but not
+asynchronously. This can be used if all tasks are cpu bottlenecked.
 
 #### taskmap.run(graph)
 
 All tasks must be normal python functions and are run synchronously in a single
 process.
 
+### Handling Failed Tasks
+
 #### taskmap.reset_failed_tasks
 
-This function allows you to rebuild a graph to only run the tasks that have
-failed and their children. A common pattern is:
+taskmap marks tasks that throw an exception as 'failed'. This function allows
+you to rebuild a graph to only run the tasks that have failed and their
+children. A common pattern is:
 
 ```.py
 result_graph = taskmap.run_parallel_async(graph)
@@ -162,9 +164,9 @@ new_result_graph = taskmap.run_parallel_async(new_graph)
 
 This function allows you to rebuild a graph to only run a subset of tasks, and
 their children. This is useful if you change some of the tasks in the `'funcs'`
-and want to rerun those tasks and the tasks that depend on their outcomes.
-
-Here's an example.
+and want to rerun those tasks and the tasks that depend on their outcomes. This
+can be because there was an bug in the task, or simply because you want to alter
+the behavior.
 
 ```.py
 result_graph = taskmap.run_parallel_async(graph)
