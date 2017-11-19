@@ -12,7 +12,7 @@ install:
   
 # command to run tests
 script:
-  - coverage run --parallel-mode --concurrency=multiprocessing taskmap/taskmap_test.py
+  - coverage run --parallel-mode --concurrency=multiprocessing --include=taskmap/taskmap.py taskmap/taskmap_test.py
 
 after_success:
   - coverage combine && codecov
