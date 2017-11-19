@@ -15,5 +15,4 @@ script:
   - coverage run --parallel-mode --concurrency=multiprocessing taskmap/taskmap_test.py
 
 after_success:
-  - coverage combine
-  - codecov
+  - coverage combine && codecov
