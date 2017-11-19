@@ -12,7 +12,7 @@ install:
   
 # command to run tests
 script:
-  - coverage taskmap/taskmap_test.py
+  - coverage run taskmap/taskmap_test.py
 
 after_success:
   - coverage combine && codecov
