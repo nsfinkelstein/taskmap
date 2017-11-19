@@ -7,13 +7,13 @@ and running them asyncronously and/or in parallel.
 
 ## Overview
 
-There are many libraries in python that help run ETL pipelines in parallel while
+There are many libraries in python that help run pipelines in parallel while
 keeping track of dependencies between tasks, notably
 [joblib](https://pythonhosted.org/joblib/) and 
 [luigi](https://github.com/spotify/luigi).
 
-taskmap provides a way to easily handle coroutines in ETL pipelines. Most ETL
-pipelines will have a significant number of tasks that are IO bound. Running
+taskmap provides a way to easily handle coroutines in task pipelines. Many kinds
+of pipelines will have a significant number of tasks that are IO bound. Running
 these tasks in parallel will still leave lots of unused processing time.
 
 That's where taskmap comes in. It's designed to help you get the most out of a
