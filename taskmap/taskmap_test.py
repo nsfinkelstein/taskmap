@@ -280,7 +280,7 @@ def test_rebuilding_graph_from_failure():
     graph = taskmap.run_parallel_async(graph)
 
     # when
-    new_graph = taskmap.build_graph_for_failed_tasks(graph)
+    new_graph = taskmap.reset_failed_tasks(graph)
 
     # then
     assert new_graph.done == ['w']
