@@ -80,7 +80,7 @@ More examples can be found in the tests.
 
 ## API
 
-##### create_graph(funcs, dependencies, io_bound=None, done=None, results=None)
+#### create_graph(funcs, dependencies, io_bound=None, done=None, results=None)
 
 Creates the dependency graph.
 
@@ -117,7 +117,7 @@ Note that for coroutines, `functools.partial` will not work. If you need to
 create partial functions to use as tasks, you can use `paco.partial` from the
 `paco` library.
 
-##### taskmap.run_parallel_async(graph, sleep=0.1, ncores=None)
+#### taskmap.run_parallel_async(graph, sleep=0.1, ncores=None)
 
 Runs the graph in a single thread. All tasks must be python coroutines. This is
 especially useful when tasks are bottlenecked by both io and cpu.
@@ -128,22 +128,22 @@ task has become available.
 `ncores` is how many cores are used in parallel. Defaults to half of available
 cores.
 
-##### taskmap.run_async(graph, sleep=.01)
+#### taskmap.run_async(graph, sleep=.01)
 
 Runs all coroutines on a single core. This can be used if all tasks are
 bottlenecked by io.
 
-##### taskmap.run_parallel(graph, sleep=.01, ncores=None)
+#### taskmap.run_parallel(graph, sleep=.01, ncores=None)
 
 The tasks must be normal python functions, and are not run asynchronously. This
 can be used if all tasks are cpu bottlenecked.
 
-##### taskmap.run(graph)
+#### taskmap.run(graph)
 
 All tasks must be normal python functions and are run synchronously in a single
 process.
 
-##### taskmap.reset_failed_tasks
+#### taskmap.reset_failed_tasks
 
 This function allows you to rebuild a graph to only run the tasks that have
 failed and their children. A common pattern is:
@@ -158,7 +158,7 @@ new_graph = taskmap.reset_failed_tasks(result_graph)
 new_result_graph = taskmap.run_parallel_async(new_graph)
 ```
 
-##### taskmap.reset_tasks
+#### taskmap.reset_tasks
 
 This function allows you to rebuild a graph to only run a subset of tasks, and
 their children. This is useful if you change some of the tasks in the `'funcs'`
