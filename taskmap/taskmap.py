@@ -56,11 +56,12 @@ def reset_failed_tasks(graph):
 
 def reset_tasks(graph, tasks):
     children = set(chain(* [get_all_children(graph, task) for task in tasks]))
-    rerun = children | tasks
+    rerun = children | set(tasks)
 
     for task in rerun:
-        graph.results[task] = None
-        graph.done.remove(task)
+        if task in graph.done:
+            graph.results[task] = None
+            graph.done.remove(task)
 
     return create_graph(graph.funcs, graph.dependencies, graph.io_bound,
                         graph.done, graph.results)
