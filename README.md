@@ -177,6 +177,6 @@ result_graph = taskmap.run_parallel_async(graph)
 # change the function corresponding to some task name
 result_graph.funcs['some_func'] = new_task
 
-new_graph = taskmap.reset_tasks(graph, ['some_func'])
+new_graph = taskmap.reset_tasks(result_graph, ['some_func'])
 new_result_graph = taskmap.run_parallel_async(new_graph)
 ```
