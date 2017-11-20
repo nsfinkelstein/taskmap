@@ -23,15 +23,15 @@ logger = logging.getLogger('taskmap')
 logger.setLevel(logging.DEBUG)
 
 now = dt.datetime.now()
-log_frmt = 'taskmap{}.log'.format(now.strftime('%m-%d-%Y--%H.%M.%S'))
-fh = logging.FileHandler(log_frmt)
+logname_frmt = 'taskmap{}.log'.format(now.strftime('%m-%d-%Y:%H.%M.%S'))
+fh = logging.FileHandler(logname_frmt)
 
 fh.setLevel(logging.DEBUG)
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
-formatter = logging.Formatter(log_frmt)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 fh.setFormatter(formatter)
 
