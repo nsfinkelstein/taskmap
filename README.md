@@ -25,7 +25,7 @@ sits unused while there are tasks it could be running.
 Because taskmap keeps track of the dependency graph, it is easy to only rerun
 failed tasks. It's also possible to change the functions corresponding to tasks
 and rerun only those changed tasks and their children. You can then cache your
-results to pick up where you left off.
+results, so that later you can pick up where you left off.
 
 ## Installation
 
