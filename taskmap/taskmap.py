@@ -294,6 +294,9 @@ def recover_values_from_manager(graph):
 def run_parallel_async(graph, ncores=None, sleep=.05):
     ncores = ncores or mp.cpu_count() // 2
 
+    if ncores == 1:
+        return run_async(graph, sleep)
+
     with mp.Manager() as manager:
         graph = create_parallel_compatible_graph(graph, manager)
 
