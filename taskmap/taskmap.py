@@ -75,7 +75,7 @@ def run(graph):
     return graph
 
 
-def run_parallel(graph, ncores=None, sleep=.1):
+def run_parallel(graph, sleep=.1):
     with mp.Manager() as manager:
         graph = tgraph.create_parallel_compatible_graph(graph, manager)
         while not tgraph.all_done(graph):
@@ -86,23 +86,20 @@ def run_parallel(graph, ncores=None, sleep=.1):
         return tgraph.recover_values_from_manager(graph)
 
 
-def run_parallel_async(graph, ncores=None, sleep=.05):
-    ncores = ncores or mp.cpu_count() // 2
-
-    if ncores == 1:
-        return run_async(graph, sleep)
+def run_parallel_async(graph, nprocs=None, sleep=.05):
+    nprocs = nprocs or mp.cpu_count() // 2
 
     with mp.Manager() as manager:
         graph = tgraph.create_parallel_compatible_graph(graph, manager)
 
-        for _ in range(ncores):
+        for _ in range(nprocs):
+            proc = mp.Process(target=run_async, args=(graph, sleep, parallel_scheduler))
+            proc.start()
 
-
-        with mp.Pool(ncores) as pool:
-            pool.starmap(run_async,
-                         repeat([graph, sleep, parallel_scheduler], ncores))
-
-        return tgraph.recover_values_from_manager(graph)
+        while True:
+            if tgraph.all_done(graph):
+                return tgraph.recover_values_from_manager(graph)
+            time.sleep(sleep)
 
 
 async def parallel_scheduler(graph, sleep, loop):

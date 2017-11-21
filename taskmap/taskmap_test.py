@@ -241,7 +241,7 @@ def test_async_error_handling():
     graph = taskmap.run_async(graph)
 
     graph_parallel = taskmap.create_graph(funcs.copy(), dependencies.copy())
-    graph_parallel = taskmap.run_parallel_async(graph_parallel, ncores=1)
+    graph_parallel = taskmap.run_parallel_async(graph_parallel, nprocs=1)
 
     # then
     expected = {
@@ -476,7 +476,7 @@ def test_async_parallel_speed():
 
     # when
     start = time.time()
-    taskmap.run_parallel_async(graph, ncores=2)
+    taskmap.run_parallel_async(graph, nprocs=2)
     end = time.time()
 
     # then
@@ -509,7 +509,7 @@ def test_async_parallel_demo():
 
     # when
     start = time.time()
-    graph = taskmap.run_parallel_async(graph, ncores=2)
+    graph = taskmap.run_parallel_async(graph, nprocs=2)
     end = time.time()
 
     # then
