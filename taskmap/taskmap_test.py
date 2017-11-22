@@ -43,6 +43,20 @@ def test_graph_ready():
     assert results == {'c'}
 
 
+def test_graph_ordered_ready():
+    # given
+    dependencies = {'a': set(), 'b': set()}
+    funcs = {'a': a, 'b': b}
+    io_bound = ['a']
+    graph = taskmap.create_graph(funcs, dependencies, io_bound=io_bound)
+
+    # when
+    results = taskmap.get_ordered_ready_tasks(graph)
+
+    # then
+    assert results == ['a', 'b']
+
+
 def test_tasks_can_be_marked_done():
     # given
     funcs = {'a': a, 'b': b}
@@ -453,19 +467,19 @@ def test_parallel_speed():
 
 
 async def r():
-    await asyncio.sleep(.4)
+    await asyncio.sleep(.5)
 
 
 async def t():
-    await asyncio.sleep(.4)
+    await asyncio.sleep(.5)
 
 
 async def w():
-    time.sleep(.4)
+    time.sleep(.5)
 
 
 async def p():
-    time.sleep(.4)
+    time.sleep(.5)
 
 
 def test_async_parallel_speed():
@@ -480,7 +494,7 @@ def test_async_parallel_speed():
     end = time.time()
 
     # then
-    assert end - start < .8
+    assert end - start < 1
 
 
 async def io_bound_a(): await asyncio.sleep(.4); return 'io_a'
