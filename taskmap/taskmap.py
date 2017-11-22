@@ -9,8 +9,6 @@ import datetime as dt
 import multiprocess as mp
 import multiprocessing_logging as mplogging
 
-from operator import contains
-from functools import partial
 
 logger = logging.getLogger('taskmap')
 logger.setLevel(logging.DEBUG)
@@ -72,7 +70,7 @@ def task_error(graph, task, error):
 
 def run(graph):
     while not tgraph.all_done(graph):
-        ready = tgraph.get_ready_tasks(graph)
+        ready = tgraph.get_ordered_ready_tasks(graph)
         for task in ready:
             graph = run_task(graph, task)
     return graph
@@ -84,7 +82,7 @@ def run_parallel(graph, nprocs=None, sleep=0.01):
         graph = tgraph.create_parallel_compatible_graph(graph, manager)
         with mp.Pool(nprocs) as pool:
             while not tgraph.all_done(graph):
-                for task in tgraph.get_ready_tasks(graph):
+                for task in tgraph.get_ordered_ready_tasks(graph, reverse=False):
                     pool.apply_async(run_task, args=(graph, task))
                 time.sleep(sleep)
         return tgraph.recover_values_from_manager(graph)
@@ -110,15 +108,17 @@ def run_parallel_async(graph, nprocs=None, sleep=0.01):
         graph = tgraph.create_parallel_compatible_graph(graph, manager)
 
         q = mp.Queue(len(graph.funcs.keys()))
+        # seed queue
+        for task in tgraph.get_ordered_ready_tasks(graph):
+            graph = tgraph.mark_as_in_progress(graph, task)
+            q.put(task)
+
         for _ in range(nprocs):
             proc = mp.Process(target=run_scheduler, args=(graph, sleep, q))
             proc.start()
 
         while not tgraph.all_done(graph):
-            key = partial(contains, graph.io_bound)
-            ready = sorted(
-                tgraph.get_ready_tasks(graph), key=key, reverse=True)
-            for task in ready:
+            for task in tgraph.get_ordered_ready_tasks(graph):
                 graph = tgraph.mark_as_in_progress(graph, task)
                 q.put(task)
 
@@ -146,9 +146,7 @@ async def scheduler(graph, sleep, q, loop):
 
 async def queue_loader(graph, q, sleep):
     while not tgraph.all_done(graph):
-        key = partial(contains, graph.io_bound)
-        ready = sorted(tgraph.get_ready_tasks(graph), key=key, reverse=True)
-        for task in ready:
+        for task in tgraph.get_ordered_ready_tasks(graph):
             graph = tgraph.mark_as_in_progress(graph, task)
             await q.put(task)
         await asyncio.sleep(sleep)

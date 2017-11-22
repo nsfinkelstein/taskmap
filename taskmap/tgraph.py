@@ -1,6 +1,7 @@
 from itertools import chain
+from operator import contains
+from functools import partial
 from collections import namedtuple
-
 
 Graph = namedtuple('graph', [
     'funcs', 'dependencies', 'done', 'results', 'in_progress', 'lock',
@@ -119,6 +120,11 @@ def get_ready_tasks(graph):
         if not set(deps) - set(done):
             ready.add(task)
     return ready - set(done) - set(in_progress)
+
+
+def get_ordered_ready_tasks(graph, reverse=True):
+    key = partial(contains, graph.io_bound)
+    return sorted(list(get_ready_tasks(graph)), key=key, reverse=reverse)
 
 
 def mark_as_done(graph, task):
