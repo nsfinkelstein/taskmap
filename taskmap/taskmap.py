@@ -138,6 +138,7 @@ async def scheduler(graph, sleep, q, loop):
         try:
             task = q.get_nowait()
             asyncio.ensure_future(run_task_async(graph, task), loop=loop)
+            await asyncio.sleep(sleep)
         except queue.Empty:
             await asyncio.sleep(sleep)
         except asyncio.QueueEmpty:
