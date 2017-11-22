@@ -40,7 +40,7 @@ def test_graph_ready():
     results = taskmap.get_ready_tasks(graph)
 
     # then
-    assert results == {'c'}
+    assert results == ['c']
 
 
 def test_graph_ordered_ready():
@@ -51,7 +51,7 @@ def test_graph_ordered_ready():
     graph = taskmap.create_graph(funcs, dependencies, io_bound=io_bound)
 
     # when
-    results = taskmap.get_ordered_ready_tasks(graph)
+    results = taskmap.get_ready_tasks(graph)
 
     # then
     assert results == ['a', 'b']
@@ -66,7 +66,7 @@ def test_tasks_can_be_marked_done():
     graph = taskmap.create_graph(funcs, dependencies, done=['b'])
 
     # then
-    assert taskmap.get_ready_tasks(graph) == {'a'}
+    assert taskmap.get_ready_tasks(graph) == ['a']
 
 
 def test_cached_results_are_used():
@@ -109,7 +109,7 @@ def test_graph_ready_after_task_completed():
     results = taskmap.get_ready_tasks(graph)
 
     # then
-    assert results == {'b'}
+    assert results == ['b']
 
 
 def test_cyclic_dependency():
@@ -501,6 +501,7 @@ async def io_bound_a(): await asyncio.sleep(.4); return 'io_a'
 async def io_bound_b(x): await asyncio.sleep(.4); return x + ' io_b'
 async def cpu_bound_a(x): time.sleep(.4); return x + ' cpu_a'
 async def cpu_bound_b(): time.sleep(.4); return 'cpu_b'
+
 
 def test_async_parallel_demo():
     # given

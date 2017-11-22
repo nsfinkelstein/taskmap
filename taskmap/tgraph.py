@@ -112,19 +112,16 @@ def get_all_children(graph, task):
     return all_children
 
 
-def get_ready_tasks(graph):
+def get_ready_tasks(graph, reverse=True):
     done = graph.done or set()
     in_progress = graph.in_progress or set()
     ready = set()
     for task, deps in graph.dependencies.items():
         if not set(deps) - set(done):
             ready.add(task)
-    return ready - set(done) - set(in_progress)
-
-
-def get_ordered_ready_tasks(graph, reverse=True):
+    ready = list(ready - set(done) - set(in_progress))
     key = partial(contains, graph.io_bound)
-    return sorted(list(get_ready_tasks(graph)), key=key, reverse=reverse)
+    return sorted(ready, key=key, reverse=reverse)
 
 
 def mark_as_done(graph, task):
