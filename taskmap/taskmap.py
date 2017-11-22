@@ -111,6 +111,9 @@ def run_async(graph, sleep=0.2, coro=None):
 
 
 def run_parallel_async(graph, nprocs=None, sleep=0.2):
+    if nprocs == 1:
+        return run_async(graph)
+
     nprocs = nprocs or mp.cpu_count() // 2
 
     with mp.Manager() as manager:
