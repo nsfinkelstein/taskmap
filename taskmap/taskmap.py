@@ -90,6 +90,19 @@ def run_parallel(graph, nprocs=None, sleep=0.01):
         return tgraph.recover_values_from_manager(graph)
 
 
+def run_async(graph, sleep=0.01, coro=None):
+    q = asyncio.Queue(len(graph.funcs.keys()))
+    loop = asyncio.new_event_loop()
+    coros = asyncio.gather(
+        queue_loader(graph, q, sleep),
+        scheduler(graph, sleep, q, loop),
+        loop=loop
+    )
+    loop.run_until_complete(coros)
+    loop.close()
+    return graph
+
+
 def run_parallel_async(graph, nprocs=None, sleep=0.01):
     nprocs = nprocs or mp.cpu_count() // 2
 
@@ -114,6 +127,12 @@ def run_parallel_async(graph, nprocs=None, sleep=0.01):
         return tgraph.recover_values_from_manager(graph)
 
 
+def run_scheduler(graph, sleep, q):
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(scheduler(graph, sleep, q, loop))
+    loop.close()
+
+
 async def scheduler(graph, sleep, q, loop):
     while not tgraph.all_done(graph):
         try:
@@ -123,6 +142,16 @@ async def scheduler(graph, sleep, q, loop):
             await asyncio.sleep(sleep)
         except asyncio.QueueEmpty:
             await asyncio.sleep(sleep)
+
+
+async def queue_loader(graph, q, sleep):
+    while not tgraph.all_done(graph):
+        key = partial(contains, graph.io_bound)
+        ready = sorted(tgraph.get_ready_tasks(graph), key=key, reverse=True)
+        for task in ready:
+            graph = tgraph.mark_as_in_progress(graph, task)
+            await q.put(task)
+        await asyncio.sleep(sleep)
 
 
 def mark_children_as_incomplete(graph, task):
@@ -146,33 +175,3 @@ def get_task_args(graph, task):
         graph.results.get(dep) for dep in graph.dependencies[task]
         if graph.results.get(dep) is not None
     ]
-
-
-def run_async(graph=None, sleep=0.01, coro=None):
-    " either graph or coro has to be non-none"
-    q = asyncio.Queue(len(graph.funcs.keys()))
-    loop = asyncio.new_event_loop()
-    coros = asyncio.gather(
-        queue_loader(graph, q, sleep),
-        scheduler(graph, sleep, q, loop),
-        loop=loop
-    )
-    loop.run_until_complete(coros)
-    loop.close()
-    return graph
-
-
-def run_scheduler(graph, sleep, q):
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(scheduler(graph, sleep, q, loop))
-    loop.close()
-
-
-async def queue_loader(graph, q, sleep):
-    while not tgraph.all_done(graph):
-        key = partial(contains, graph.io_bound)
-        ready = sorted(tgraph.get_ready_tasks(graph), key=key, reverse=True)
-        for task in ready:
-            graph = tgraph.mark_as_in_progress(graph, task)
-            await q.put(task)
-        await asyncio.sleep(sleep)
