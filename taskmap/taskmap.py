@@ -90,7 +90,7 @@ def run_parallel(graph, nprocs=None, sleep=0.2):
             while not tgraph.all_done(graph):
                 for task in tgraph.get_ready_tasks(graph, reverse=False):
                     graph = tgraph.mark_as_in_progress(graph, task)
-                    mlogger.info('pid {}: claiming task {}'.format(os.getpid(), task))
+                    mlogger.info('pid {}: assigning task {}'.format(os.getpid(), task))
                     pool.apply_async(run_task, args=(graph, task))
                 time.sleep(sleep)
         return tgraph.recover_values_from_manager(graph)
@@ -148,12 +148,12 @@ async def scheduler(graph, sleep, ioq, cpuq, loop):
     while not tgraph.all_done(graph):
         try:
             task = ioq.get_nowait()
-            logger.info('pid {}: claiming task {}'.format(os.getpid(), task))
+            logger.info('pid {}: dequeueing task {}'.format(os.getpid(), task))
             asyncio.ensure_future(run_task_async(graph, task), loop=loop)
         except Exception:
             try:
                 task = cpuq.get_nowait()
-                logger.info('pid {}: claiming task {}'.format(os.getpid(), task))
+                logger.info('pid {}: dequeueing task {}'.format(os.getpid(), task))
                 asyncio.ensure_future(run_task_async(graph, task), loop=loop)
                 # don't put two cpu intensive tasks on the same core without waiting
                 await asyncio.sleep(sleep)
