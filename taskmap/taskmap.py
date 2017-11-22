@@ -2,7 +2,6 @@ from taskmap import tgraph
 
 import os
 import time
-import queue
 import asyncio
 import logging
 import datetime as dt
