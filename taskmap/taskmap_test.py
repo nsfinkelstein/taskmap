@@ -198,7 +198,7 @@ def test_sync_error_handling():
     graph = taskmap.run(graph)
 
     graph_parallel = taskmap.create_graph(funcs.copy(), dependencies.copy())
-    graph_parallel = taskmap.run_parallel(graph)
+    graph_parallel = taskmap.run_parallel(graph, nprocs=2)
 
     # then
     expected = {
@@ -241,7 +241,7 @@ def test_async_error_handling():
     graph = taskmap.run_async(graph)
 
     graph_parallel = taskmap.create_graph(funcs.copy(), dependencies.copy())
-    graph_parallel = taskmap.run_parallel_async(graph_parallel, nprocs=1)
+    graph_parallel = taskmap.run_parallel_async(graph_parallel, nprocs=2)
 
     # then
     expected = {
@@ -276,7 +276,7 @@ def test_rebuilding_graph_from_failure():
     }
 
     graph = taskmap.create_graph(funcs.copy(), dependencies.copy())
-    graph = taskmap.run_parallel_async(graph)
+    graph = taskmap.run_parallel_async(graph, nprocs=2)
 
     # when
     new_graph = taskmap.reset_failed_tasks(graph)
@@ -337,7 +337,7 @@ def test_run_parallel():
     graph = taskmap.create_graph(funcs, dependencies)
 
     # when
-    graph = taskmap.run_parallel(graph)
+    graph = taskmap.run_parallel(graph, nprocs=2)
 
     # then
     assert graph.results == {'long_task': 5, 'b': 15, 'c': 40}
@@ -396,19 +396,19 @@ def test_run_parllel_async():
     graph = taskmap.create_graph(funcs, dependencies)
 
     # when
-    graph = taskmap.run_parallel_async(graph)
+    graph = taskmap.run_parallel_async(graph, nprocs=2)
 
     # then
     assert graph.results == {'along_task': 5, 'ab': 15, 'ac': 40}
 
 
 async def x():
-    await asyncio.sleep(.5)
+    await asyncio.sleep(.25)
     return 5
 
 
 async def y():
-    await asyncio.sleep(.5)
+    await asyncio.sleep(.25)
     return 5
 
 
@@ -424,16 +424,16 @@ def test_async_speed():
     end = time.time()
 
     # then
-    assert end - start < 1
+    assert end - start < .5
 
 
 def v():
-    time.sleep(.5)
+    time.sleep(.25)
     return 5
 
 
 def u():
-    time.sleep(.5)
+    time.sleep(.25)
     return 5
 
 
@@ -445,27 +445,27 @@ def test_parallel_speed():
 
     # when
     start = time.time()
-    taskmap.run_parallel(graph)
+    taskmap.run_parallel(graph, nprocs=2)
     end = time.time()
 
     # then
-    assert end - start < 1
+    assert end - start < .5
 
 
 async def r():
-    await asyncio.sleep(2)
+    await asyncio.sleep(.25)
 
 
 async def t():
-    await asyncio.sleep(2)
+    await asyncio.sleep(.25)
 
 
 async def w():
-    time.sleep(2)
+    time.sleep(.25)
 
 
 async def p():
-    time.sleep(2)
+    time.sleep(.25)
 
 
 def test_async_parallel_speed():
@@ -480,13 +480,13 @@ def test_async_parallel_speed():
     end = time.time()
 
     # then
-    assert end - start < 4
+    assert end - start < .5
 
 
-async def io_bound_a(): await asyncio.sleep(2); return 'io_a'
-async def io_bound_b(x): await asyncio.sleep(2); return x + ' io_b'
-async def cpu_bound_a(x): time.sleep(2); return x + ' cpu_a'
-async def cpu_bound_b(): time.sleep(2); return 'cpu_b'
+async def io_bound_a(): await asyncio.sleep(.25); return 'io_a'
+async def io_bound_b(x): await asyncio.sleep(.25); return x + ' io_b'
+async def cpu_bound_a(x): time.sleep(.25); return x + ' cpu_a'
+async def cpu_bound_b(): time.sleep(.25); return 'cpu_b'
 
 def test_async_parallel_demo():
     # given
@@ -496,7 +496,7 @@ def test_async_parallel_demo():
         'cpu_bound_a': cpu_bound_a,
         'cpu_bound_b': cpu_bound_b,
     }
-        
+
     dependencies = {
         'io_bound_a': [],
         'io_bound_b': ['cpu_bound_b'],
@@ -513,7 +513,7 @@ def test_async_parallel_demo():
     end = time.time()
 
     # then
-    assert end - start < 6
+    assert end - start < .75
     assert graph.results['io_bound_a'] == 'io_a'
     assert graph.results['io_bound_b'] == 'cpu_b io_b'
     assert graph.results['cpu_bound_a'] == 'io_a cpu_a'

@@ -31,8 +31,7 @@ def reset_tasks(graph, tasks):
             graph.results[task] = None
             graph.done.remove(task)
 
-    return create_graph(graph.funcs, graph.dependencies, graph.io_bound,
-                        graph.done, graph.results)
+    return graph
 
 
 def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):
