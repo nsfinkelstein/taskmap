@@ -467,19 +467,19 @@ def test_parallel_speed():
 
 
 async def r():
-    await asyncio.sleep(.5)
+    await asyncio.sleep(1)
 
 
 async def t():
-    await asyncio.sleep(.5)
+    await asyncio.sleep(1)
 
 
 async def w():
-    time.sleep(.5)
+    time.sleep(1)
 
 
 async def p():
-    time.sleep(.5)
+    time.sleep(1)
 
 
 def test_async_parallel_speed():
@@ -494,7 +494,7 @@ def test_async_parallel_speed():
     end = time.time()
 
     # then
-    assert end - start < 1
+    assert end - start < 2
 
 
 async def io_bound_a(): await asyncio.sleep(.4); return 'io_a'

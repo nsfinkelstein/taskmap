@@ -113,6 +113,7 @@ def run_parallel_async(graph, nprocs=None, sleep=0.2):
         # seed queue
         for task in tgraph.get_ready_tasks(graph):
             graph = tgraph.mark_as_in_progress(graph, task)
+            logger.info('pid {}: queueing task {}'.format(os.getpid(), task))
             q.put(task)
 
         for _ in range(nprocs):
@@ -122,6 +123,7 @@ def run_parallel_async(graph, nprocs=None, sleep=0.2):
         while not tgraph.all_done(graph):
             for task in tgraph.get_ready_tasks(graph):
                 graph = tgraph.mark_as_in_progress(graph, task)
+                logger.info('pid {}: queueing task {}'.format(os.getpid(), task))
                 q.put(task)
 
             time.sleep(sleep)
@@ -151,6 +153,7 @@ async def queue_loader(graph, q, sleep):
     while not tgraph.all_done(graph):
         for task in tgraph.get_ready_tasks(graph):
             graph = tgraph.mark_as_in_progress(graph, task)
+            logger.info('pid {}: queueing task {}'.format(os.getpid(), task))
             await q.put(task)
         await asyncio.sleep(sleep)
 
