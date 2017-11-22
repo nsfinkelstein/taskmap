@@ -76,7 +76,7 @@ def run(graph):
     return graph
 
 
-def run_parallel(graph, nprocs=None, sleep=0.01):
+def run_parallel(graph, nprocs=None, sleep=0.2):
     nprocs = nprocs or mp.cpu_count() - 1
     with mp.Manager() as manager:
         graph = tgraph.create_parallel_compatible_graph(graph, manager)
@@ -88,7 +88,7 @@ def run_parallel(graph, nprocs=None, sleep=0.01):
         return tgraph.recover_values_from_manager(graph)
 
 
-def run_async(graph, sleep=0.01, coro=None):
+def run_async(graph, sleep=0.2, coro=None):
     q = asyncio.Queue(len(graph.funcs.keys()))
     loop = asyncio.new_event_loop()
     coros = asyncio.gather(
@@ -101,7 +101,7 @@ def run_async(graph, sleep=0.01, coro=None):
     return graph
 
 
-def run_parallel_async(graph, nprocs=None, sleep=0.01):
+def run_parallel_async(graph, nprocs=None, sleep=0.2):
     nprocs = nprocs or mp.cpu_count() // 2
 
     with mp.Manager() as manager:
@@ -138,7 +138,6 @@ async def scheduler(graph, sleep, q, loop):
         try:
             task = q.get_nowait()
             asyncio.ensure_future(run_task_async(graph, task), loop=loop)
-            await asyncio.sleep(sleep)
         except queue.Empty:
             await asyncio.sleep(sleep)
         except asyncio.QueueEmpty:
