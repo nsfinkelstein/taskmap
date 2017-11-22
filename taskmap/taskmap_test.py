@@ -403,12 +403,12 @@ def test_run_parllel_async():
 
 
 async def x():
-    await asyncio.sleep(.3)
+    await asyncio.sleep(.4)
     return 5
 
 
 async def y():
-    await asyncio.sleep(.3)
+    await asyncio.sleep(.4)
     return 5
 
 
@@ -424,16 +424,16 @@ def test_async_speed():
     end = time.time()
 
     # then
-    assert end - start < .6
+    assert end - start < .8
 
 
 def v():
-    time.sleep(.3)
+    time.sleep(.4)
     return 5
 
 
 def u():
-    time.sleep(.3)
+    time.sleep(.4)
     return 5
 
 
@@ -449,23 +449,23 @@ def test_parallel_speed():
     end = time.time()
 
     # then
-    assert end - start < .6
+    assert end - start < .8
 
 
 async def r():
-    await asyncio.sleep(.3)
+    await asyncio.sleep(.4)
 
 
 async def t():
-    await asyncio.sleep(.3)
+    await asyncio.sleep(.4)
 
 
 async def w():
-    time.sleep(.3)
+    time.sleep(.4)
 
 
 async def p():
-    time.sleep(.3)
+    time.sleep(.4)
 
 
 def test_async_parallel_speed():
@@ -480,13 +480,13 @@ def test_async_parallel_speed():
     end = time.time()
 
     # then
-    assert end - start < .6
+    assert end - start < .8
 
 
-async def io_bound_a(): await asyncio.sleep(.3); return 'io_a'
-async def io_bound_b(x): await asyncio.sleep(.3); return x + ' io_b'
-async def cpu_bound_a(x): time.sleep(.3); return x + ' cpu_a'
-async def cpu_bound_b(): time.sleep(.3); return 'cpu_b'
+async def io_bound_a(): await asyncio.sleep(.4); return 'io_a'
+async def io_bound_b(x): await asyncio.sleep(.4); return x + ' io_b'
+async def cpu_bound_a(x): time.sleep(.4); return x + ' cpu_a'
+async def cpu_bound_b(): time.sleep(.4); return 'cpu_b'
 
 def test_async_parallel_demo():
     # given
@@ -513,7 +513,7 @@ def test_async_parallel_demo():
     end = time.time()
 
     # then
-    assert end - start < .9
+    assert end - start < 1.2
     assert graph.results['io_bound_a'] == 'io_a'
     assert graph.results['io_bound_b'] == 'cpu_b io_b'
     assert graph.results['cpu_bound_a'] == 'io_a cpu_a'
