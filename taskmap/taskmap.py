@@ -10,7 +10,10 @@ import multiprocess as mp
 import multiprocessing_logging as mplogging
 
 
-logger = logging.getLogger('taskmap')
+mlogger = logging.getLogger('taskmap-manager')
+mlogger.setLevel(logging.DEBUG)
+
+logger = logging.getLogger('taskmap-worker')
 logger.setLevel(logging.DEBUG)
 
 now = dt.datetime.now()
@@ -30,6 +33,9 @@ fh.setFormatter(formatter)
 logger.addHandler(ch)
 logger.addHandler(fh)
 mplogging.install_mp_handler(logger)
+
+mlogger.addHandler(ch)
+mlogger.addHandler(fh)
 
 
 def run_task(graph, task):
@@ -91,11 +97,12 @@ def run_parallel(graph, nprocs=None, sleep=0.2):
 
 
 def run_async(graph, sleep=0.2, coro=None):
-    q = asyncio.Queue(len(graph.funcs.keys()))
+    ioq = asyncio.Queue(len(graph.funcs.keys()))
+    cpuq = asyncio.Queue(len(graph.funcs.keys()))
     loop = asyncio.new_event_loop()
     coros = asyncio.gather(
-        queue_loader(graph, q, sleep),
-        scheduler(graph, sleep, q, loop),
+        queue_loader(graph, ioq, cpuq, sleep),
+        scheduler(graph, sleep, ioq, cpuq, loop),
         loop=loop
     )
     loop.run_until_complete(coros)
@@ -109,52 +116,62 @@ def run_parallel_async(graph, nprocs=None, sleep=0.2):
     with mp.Manager() as manager:
         graph = tgraph.create_parallel_compatible_graph(graph, manager)
 
-        q = mp.Queue(len(graph.funcs.keys()))
-        # seed queue
-        for task in tgraph.get_ready_tasks(graph):
-            graph = tgraph.mark_as_in_progress(graph, task)
-            logger.info('pid {}: queueing task {}'.format(os.getpid(), task))
-            q.put(task)
+        ioq = mp.Queue(len(graph.funcs.keys()))
+        cpuq = mp.Queue(len(graph.funcs.keys()))
 
         for _ in range(nprocs):
-            proc = mp.Process(target=run_scheduler, args=(graph, sleep, q))
+            proc = mp.Process(target=run_scheduler, args=(graph, sleep, ioq, cpuq))
             proc.start()
 
         while not tgraph.all_done(graph):
             for task in tgraph.get_ready_tasks(graph):
                 graph = tgraph.mark_as_in_progress(graph, task)
-                logger.info('pid {}: queueing task {}'.format(os.getpid(), task))
-                q.put(task)
+                mlogger.info('pid {}: queueing task {}'.format(os.getpid(), task))
+                if task in graph.io_bound:
+                    ioq.put(task)
+                else:
+                    cpuq.put(task)
 
             time.sleep(sleep)
 
         return tgraph.recover_values_from_manager(graph)
 
 
-def run_scheduler(graph, sleep, q):
+def run_scheduler(graph, sleep, ioq, cpuq):
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(scheduler(graph, sleep, q, loop))
+    loop.run_until_complete(scheduler(graph, sleep, ioq, cpuq, loop))
     loop.close()
 
 
-async def scheduler(graph, sleep, q, loop):
+# TODO: scheduler can be improved
+async def scheduler(graph, sleep, ioq, cpuq, loop):
     while not tgraph.all_done(graph):
         try:
-            task = q.get_nowait()
+            task = ioq.get_nowait()
             logger.info('pid {}: claiming task {}'.format(os.getpid(), task))
             asyncio.ensure_future(run_task_async(graph, task), loop=loop)
-        except queue.Empty:
-            await asyncio.sleep(sleep)
-        except asyncio.QueueEmpty:
-            await asyncio.sleep(sleep)
+        except Exception:
+            try:
+                task = cpuq.get_nowait()
+                logger.info('pid {}: claiming task {}'.format(os.getpid(), task))
+                asyncio.ensure_future(run_task_async(graph, task), loop=loop)
+                # don't put two cpu intensive tasks on the same core without waiting
+                await asyncio.sleep(sleep)
+            except:
+                await asyncio.sleep(sleep)
 
 
-async def queue_loader(graph, q, sleep):
+async def queue_loader(graph, ioq, cpuq, sleep):
     while not tgraph.all_done(graph):
         for task in tgraph.get_ready_tasks(graph):
             graph = tgraph.mark_as_in_progress(graph, task)
             logger.info('pid {}: queueing task {}'.format(os.getpid(), task))
-            await q.put(task)
+
+            if task in graph.io_bound:
+                await ioq.put(task)
+            else:
+                await cpuq.put(task)
+
         await asyncio.sleep(sleep)
 
 
