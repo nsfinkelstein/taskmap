@@ -72,6 +72,7 @@ def run(graph):
     while not tgraph.all_done(graph):
         ready = tgraph.get_ready_tasks(graph)
         for task in ready:
+            logger.info('pid {}: claiming task {}'.format(os.getpid(), task))
             graph = run_task(graph, task)
     return graph
 
@@ -83,6 +84,7 @@ def run_parallel(graph, nprocs=None, sleep=0.2):
         with mp.Pool(nprocs) as pool:
             while not tgraph.all_done(graph):
                 for task in tgraph.get_ready_tasks(graph, reverse=False):
+                    logger.info('pid {}: claiming task {}'.format(os.getpid(), task))
                     pool.apply_async(run_task, args=(graph, task))
                 time.sleep(sleep)
         return tgraph.recover_values_from_manager(graph)
@@ -137,6 +139,7 @@ async def scheduler(graph, sleep, q, loop):
     while not tgraph.all_done(graph):
         try:
             task = q.get_nowait()
+            logger.info('pid {}: claiming task {}'.format(os.getpid(), task))
             asyncio.ensure_future(run_task_async(graph, task), loop=loop)
         except queue.Empty:
             await asyncio.sleep(sleep)
