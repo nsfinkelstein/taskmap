@@ -113,13 +113,13 @@ def get_all_children(graph, task):
 
 
 def get_ready_tasks(graph, reverse=True):
-    done = graph.done or set()
+    done = set(graph.done) or set()
     in_progress = graph.in_progress or set()
     ready = set()
     for task, deps in graph.dependencies.items():
-        if not set(deps) - set(done):
+        if not set(deps) - done:
             ready.add(task)
-    ready = list(ready - set(done) - set(in_progress))
+    ready = list(ready - done - set(in_progress))
     key = partial(contains, graph.io_bound)
     return sorted(ready, key=key, reverse=reverse)
 
