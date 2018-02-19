@@ -125,7 +125,12 @@ def get_ready_tasks(graph, reverse=True):
 
 
 def mark_as_done(graph, task):
-    graph.done.append(task)
+    if type(task) == str:
+        task = [task]
+
+    for t in task:
+        graph.done.append(task)
+
     return graph
 
 
