@@ -129,7 +129,7 @@ def mark_as_done(graph, task):
         task = [task]
 
     for t in task:
-        graph.done.append(task)
+        graph.done.append(t)
 
     return graph
 
