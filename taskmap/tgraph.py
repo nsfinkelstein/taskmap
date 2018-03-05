@@ -130,7 +130,7 @@ def mark_as_done_except(graph, task):
 
     all_tasks = graph.dependencies.keys()
 
-    for t in set(all_tasks) - set(task):
+    for t in set(all_tasks) - set(graph.done) - set(task):
         graph.done.append(t)
 
     return graph
