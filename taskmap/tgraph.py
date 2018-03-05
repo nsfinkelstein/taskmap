@@ -140,7 +140,7 @@ def mark_as_done(graph, task):
     if type(task) == str:
         task = [task]
 
-    for t in task:
+    for t in set(task) - set(graph.done):
         graph.done.append(t)
 
     return graph
