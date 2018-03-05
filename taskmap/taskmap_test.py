@@ -112,6 +112,29 @@ def test_graph_ready_after_task_completed():
     assert results == ['b']
 
 
+def test_mark_as_done_except():
+    # given
+    dependencies = {
+        'a': {'b', 'c'},
+        'b': {'c'},
+        'c': set(),
+    }
+
+    funcs = {
+        'a': a,
+        'b': b,
+        'c': c,
+    }
+
+    graph = taskmap.create_graph(funcs, dependencies)
+    graph = taskmap.mark_as_done_except(graph, ['c'])
+
+    results = taskmap.get_ready_tasks(graph)
+
+    # then
+    assert results == ['c']
+
+
 def test_cyclic_dependency():
     # given
     dependencies = {
