@@ -180,3 +180,12 @@ result_graph.funcs['some_func'] = new_task
 new_graph = taskmap.reset_tasks(result_graph, ['some_func'])
 new_result_graph = taskmap.run_parallel_async(new_graph)
 ```
+
+### Manipulating the graph
+
+#### taskmap.mark_as_done(graph, tasks)
+#### taskmap.mark_as_done_except(graph, tasks)
+
+### Parsing logs
+
+#### taskmap.in\_progress(path\_to\_log)
