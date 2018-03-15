@@ -3,6 +3,7 @@ import logging
 import taskmap
 import pytest
 import time
+import os
 
 # disable logging during tests
 logging.disable(logging.CRITICAL)
@@ -186,6 +187,31 @@ def test_all_names_are_funcs():
 
         # when
         taskmap.create_graph(funcs, dependencies)
+
+
+def test_logging_no_write():
+    # given
+    dependencies = {'a': []}
+    funcs = {'a': a}
+    logging_config = {'write': False}
+
+    # when
+    taskmap.create_graph(funcs, dependencies, name='name', logging_config=logging_config)
+
+
+def test_logging_filename_change():
+    # given
+    dependencies = {'a': []}
+    funcs = {'a': a}
+    name = 'test-taskmap-name'
+    graph = taskmap.create_graph(funcs, dependencies, name=name,
+                                 logging_config={'write': True})
+
+    # when
+    graph = taskmap.run(graph)
+
+    # then
+    assert any(name in name for name in os.listdir('./'))
 
 
 def test_run_pass_args():
