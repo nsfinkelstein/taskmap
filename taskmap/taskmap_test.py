@@ -211,7 +211,7 @@ def test_logging_filename_change():
     graph = taskmap.run(graph)
 
     # then
-    assert any(name in name for name in os.listdir('./'))
+    assert any(name in f for f in os.listdir('./'))
 
 
 def test_run_pass_args():
