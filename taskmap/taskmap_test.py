@@ -214,6 +214,33 @@ def test_logging_filename_change():
     assert any(name in f for f in os.listdir('./'))
 
 
+def test_default_logging_severity_level():
+    dependencies = {'a': []}
+    funcs = {'a': a}
+    name = 'test-taskmap-default-level'
+    taskmap.create_graph(funcs, dependencies, name=name)
+
+    manager_logger_name = '{}-manager'.format(name)
+    worker_logger_name = '{}-worker'.format(name)
+
+    assert logging.getLogger(manager_logger_name).level == logging.DEBUG
+    assert logging.getLogger(worker_logger_name).level == logging.DEBUG
+
+
+def test_explicit_logging_severity_level():
+    dependencies = {'a': []}
+    funcs = {'a': a}
+    name = 'test-taskmap-explicit-level'
+    taskmap.create_graph(funcs, dependencies, name=name, 
+                         logging_config={'level': logging.ERROR})
+
+    manager_logger_name = '{}-manager'.format(name)
+    worker_logger_name = '{}-worker'.format(name)
+
+    assert logging.getLogger(manager_logger_name).level == logging.ERROR
+    assert logging.getLogger(worker_logger_name).level == logging.ERROR
+
+
 def test_run_pass_args():
     # given
     dependencies = {

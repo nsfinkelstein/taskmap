@@ -173,23 +173,24 @@ def all_done(graph):
 
 def setup_loggers(config):
     name = config.get('name', 'taskmap')
+    level = config.get('level', logging.DEBUG)
 
     if logging.getLogger('{}-manager'.format(name)).handlers:
         # we've already configured these loggers
         return
 
     mlogger = logging.getLogger('{}-manager'.format(name))
-    mlogger.setLevel(logging.DEBUG)
+    mlogger.setLevel(level)
 
     logger = logging.getLogger('{}-worker'.format(name))
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(level)
 
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     ch = logging.StreamHandler()
     ch.setFormatter(formatter)
-    ch.setLevel(logging.DEBUG)
+    ch.setLevel(level)
     logger.addHandler(ch)
     mlogger.addHandler(ch)
 
@@ -197,7 +198,7 @@ def setup_loggers(config):
         now = dt.datetime.now()
         logname_frmt = '{}{}.log'.format(name, now.strftime('%m-%d-%Y:%H.%M.%S'))
         fh = logging.FileHandler(logname_frmt)
-        fh.setLevel(logging.DEBUG)
+        fh.setLevel(level)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
         mlogger.addHandler(fh)
