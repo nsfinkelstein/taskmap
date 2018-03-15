@@ -192,7 +192,6 @@ def setup_loggers(config):
     ch.setLevel(logging.DEBUG)
     logger.addHandler(ch)
     mlogger.addHandler(ch)
-    mplogging.install_mp_handler(logger)
 
     if config.get('write', True):
         now = dt.datetime.now()
@@ -203,6 +202,7 @@ def setup_loggers(config):
         logger.addHandler(fh)
         mlogger.addHandler(fh)
 
+    mplogging.install_mp_handler(logger)
 
 def create_parallel_compatible_graph(graph, manager):
     return Graph(
