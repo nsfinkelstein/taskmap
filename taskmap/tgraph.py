@@ -1,3 +1,7 @@
+import logging
+import datetime as dt
+import multiprocessing_logging as mplogging
+
 from itertools import chain
 from operator import contains
 from functools import partial
@@ -5,7 +9,7 @@ from collections import namedtuple
 
 Graph = namedtuple('graph', [
     'funcs', 'dependencies', 'done', 'results', 'in_progress', 'lock',
-    'io_bound'
+    'io_bound', 'name'
 ])
 
 
@@ -35,7 +39,17 @@ def reset_tasks(graph, tasks):
     return graph
 
 
-def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):
+def create_graph(funcs, dependencies, io_bound=None, done=None, results=None,
+                 name='taskmap', logging_config=None):
+    """
+    logging_config is expected to be a dictionary. the keys can be 'name',
+    which names the loggers to be used, and 'write', which specificies whether
+    the log is written to disk. Note if two graphs with the same name are
+    created, only the logging config from the first will be used.
+    """
+    defaults = {'name': name, 'write': False}
+    setup_loggers({**defaults, **(logging_config or {})})
+
     dependencies = {task: list(deps) for task, deps in dependencies.items()}
     io_bound = io_bound or []
     done = done or []
@@ -52,7 +66,9 @@ def create_graph(funcs, dependencies, io_bound=None, done=None, results=None):
         done=list(done),
         results=results,
         lock=0,
-        io_bound=io_bound)
+        io_bound=io_bound,
+        name=name
+    )
 
 
 def check_cyclic_dependency(dependencies):
@@ -155,6 +171,40 @@ def all_done(graph):
     return set(graph.done) == set(graph.dependencies.keys())
 
 
+def setup_loggers(config):
+    name = config.get('name', 'taskmap')
+    level = config.get('level', logging.DEBUG)
+
+    if logging.getLogger('{}-manager'.format(name)).handlers:
+        # we've already configured these loggers
+        return
+
+    mlogger = logging.getLogger('{}-manager'.format(name))
+    mlogger.setLevel(level)
+
+    logger = logging.getLogger('{}-worker'.format(name))
+    logger.setLevel(level)
+
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    ch = logging.StreamHandler()
+    ch.setFormatter(formatter)
+    ch.setLevel(level)
+    logger.addHandler(ch)
+    mlogger.addHandler(ch)
+
+    if config.get('write', True):
+        now = dt.datetime.now()
+        logname_frmt = '{}{}.log'.format(name, now.strftime('%m-%d-%Y:%H.%M.%S'))
+        fh = logging.FileHandler(logname_frmt)
+        fh.setLevel(level)
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
+        mlogger.addHandler(fh)
+
+    mplogging.install_mp_handler(logger)
+
 def create_parallel_compatible_graph(graph, manager):
     return Graph(
         funcs=manager.dict(graph.funcs),
@@ -163,7 +213,8 @@ def create_parallel_compatible_graph(graph, manager):
         results=manager.dict(graph.results),
         in_progress=manager.list(),
         lock=manager.Value(int, 0),
-        io_bound=manager.list(graph.io_bound))
+        io_bound=manager.list(graph.io_bound),
+        name=graph.name)
 
 
 def recover_values_from_manager(graph):
@@ -174,4 +225,5 @@ def recover_values_from_manager(graph):
         funcs=dict(graph.funcs),
         results=dict(graph.results),
         io_bound=list(graph.io_bound),
-        dependencies=dict(graph.dependencies))
+        dependencies=dict(graph.dependencies),
+        name=graph.name)
