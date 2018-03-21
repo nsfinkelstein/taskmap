@@ -205,6 +205,7 @@ def setup_loggers(config):
 
     mplogging.install_mp_handler(logger)
 
+
 def create_parallel_compatible_graph(graph, manager):
     return Graph(
         funcs=manager.dict(graph.funcs),
