@@ -270,7 +270,6 @@ error = RuntimeError('some error')
 def d():
     raise error
 
-
 def test_sync_error_handling():
     # given
     dependencies = {
@@ -302,6 +301,22 @@ def test_sync_error_handling():
     assert graph_parallel.results['c'] == expected['c']
     assert graph_parallel.results['d'].__class__ == expected['d'].__class__
     assert graph_parallel.results['d'].args == expected['d'].args
+
+    try:
+        graph = taskmap.create_graph(funcs.copy(), dependencies.copy())
+        graph = taskmap.run(graph, trap_exceptions=False)
+    except:
+        pass
+    else:
+        assert False
+
+    try:
+        graph_parallel = taskmap.create_graph(funcs.copy(), dependencies.copy())
+        graph_parallel = taskmap.run_parallel(graph, nprocs=2, sleep=.001, trap_exceptions=False)
+    except Exception:
+        pass
+    else:
+        assert False
 
 
 async def control():
@@ -349,6 +364,23 @@ def test_async_error_handling():
     assert graph_parallel.results['e'].__class__ == expected['e'].__class__
     assert graph_parallel.results['e'].args == expected['e'].args
     assert graph.results['control'] == 5
+
+    try:
+        graph = taskmap.create_graph(funcs.copy(), dependencies.copy())
+        graph = taskmap.run_async(graph, sleep=.001, trap_exceptions = False)
+    except Exception:
+        pass
+    else:
+        assert False
+
+
+    try:
+        graph_parallel = taskmap.create_graph(funcs.copy(), dependencies.copy())
+        graph_parallel = taskmap.run_parallel_async(graph_parallel, nprocs=2, sleep=.001, trap_exceptions=False)
+    except Exception:
+        pass
+    else:
+        assert False
 
 
 def test_rebuilding_graph_from_failure():
@@ -539,7 +571,7 @@ def test_parallel_speed():
     end = time.time()
 
     # then
-    assert end - start < .8
+    assert end - start < 1.8
 
 
 async def r():
@@ -570,7 +602,7 @@ def test_async_parallel_speed():
     end = time.time()
 
     # then
-    assert end - start < .8
+    assert end - start < 1.8
 
 
 async def io_bound_a(): await asyncio.sleep(.4); return 'io_a'
@@ -604,7 +636,7 @@ def test_async_parallel_demo():
     end = time.time()
 
     # then
-    assert end - start < 1.2
+    assert end - start < 2.2
     assert graph.results['io_bound_a'] == 'io_a'
     assert graph.results['io_bound_b'] == 'cpu_b io_b'
     assert graph.results['cpu_bound_a'] == 'io_a cpu_a'
