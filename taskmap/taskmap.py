@@ -18,32 +18,33 @@ def mlog(graph):
 
 
 def run_task(graph, task, trap_exceptions=True):
-    graph = tgraph.mark_as_in_progress(graph, task)
-    args = get_task_args(graph, task)
-    log(graph).info('pid {}: starting task {}'.format(os.getpid(), task))
     if trap_exceptions:
-        try:
-            result = graph.funcs[task](*args)
-            return task_success(graph, task, result)
-        except Exception as error:
-            return task_error(graph, task, error)
+            try:
+                graph = tgraph.mark_as_in_progress(graph, task)
+                args = get_task_args(graph, task)
+                log(graph).info('pid {}: starting task {}'.format(os.getpid(), task))
+                result = graph.funcs[task](*args)
+                return task_success(graph, task, result)
+            except Exception as error:
+                return task_error(graph, task, error)
     else:
+        graph = tgraph.mark_as_in_progress(graph, task)
+        args = get_task_args(graph, task)
+        log(graph).info('pid {}: starting task {}'.format(os.getpid(), task))
         result = graph.funcs[task](*args)
         return task_success(graph, task, result)
 
-async def run_task_async(graph, task, trap_exceptions=True):
-    graph = tgraph.mark_as_in_progress(graph, task)
-    args = get_task_args(graph, task)
-    log(graph).info('pid {}: starting task {}'.format(os.getpid(), task))
-    if trap_exceptions:
-        try:
-            result = await graph.funcs[task](*args)
-            return task_success(graph, task, result)
-        except Exception as error:
-            return task_error(graph, task, error)
-    else:
+
+
+async def run_task_async(graph, task):
+    try:
+        graph = tgraph.mark_as_in_progress(graph, task)
+        args = get_task_args(graph, task)
+        log(graph).info('pid {}: starting task {}'.format(os.getpid(), task))
         result = await graph.funcs[task](*args)
         return task_success(graph, task, result)
+    except Exception as error:
+        return task_error(graph, task, error)
 
 
 def task_success(graph, task, result):
@@ -70,39 +71,27 @@ def run(graph, trap_exceptions=True):
     return graph
 
 
-def run_parallel(graph, nprocs=None, sleep=0.2, trap_exceptions=True):
+def run_parallel(graph, nprocs=None, sleep=0.2):
     nprocs = nprocs or mp.cpu_count() - 1
     with mp.Manager() as manager:
         graph = tgraph.create_parallel_compatible_graph(graph, manager)
         with mp.Pool(nprocs) as pool:
-            results = []
             while not tgraph.all_done(graph):
                 for task in tgraph.get_ready_tasks(graph, reverse=False):
                     graph = tgraph.mark_as_in_progress(graph, task)
                     mlog(graph).info('pid {}: assigning task {}'.format(os.getpid(), task))
-                    results += [pool.apply_async(run_task, args=(graph, task, trap_exceptions))]
-
-
+                    pool.apply_async(run_task, args=(graph, task))
                 time.sleep(sleep)
-                if trap_exceptions == False:
-                    is_alive = sum([p.successful() for p in results]) == len(results)
-                    if not is_alive:
-                        failed = [p for p in results if not p.successful()]
-                        msg = 'pid {}: failed tasks {}'.format(os.getpid(), failed)
-                        mlog(graph).error(msg)
-                        pool.terminate()
-                        raise Exception(msg)
-
         return tgraph.recover_values_from_manager(graph)
 
 
-def run_async(graph, sleep=0.2, coro=None, trap_exceptions=True):
+def run_async(graph, sleep=0.2, coro=None):
     ioq = asyncio.Queue(len(graph.funcs.keys()))
     cpuq = asyncio.Queue(len(graph.funcs.keys()))
     loop = asyncio.new_event_loop()
     coros = asyncio.gather(
         queue_loader(graph, ioq, cpuq, sleep),
-        scheduler(graph, sleep, ioq, cpuq, loop, trap_exceptions),
+        scheduler(graph, sleep, ioq, cpuq, loop),
         loop=loop
     )
     loop.run_until_complete(coros)
@@ -110,7 +99,7 @@ def run_async(graph, sleep=0.2, coro=None, trap_exceptions=True):
     return graph
 
 
-def run_parallel_async(graph, nprocs=None, sleep=0.2, trap_exceptions=True):
+def run_parallel_async(graph, nprocs=None, sleep=0.2):
     if nprocs == 1:
         return run_async(graph)
 
@@ -122,11 +111,9 @@ def run_parallel_async(graph, nprocs=None, sleep=0.2, trap_exceptions=True):
         ioq = mp.Queue(len(graph.funcs.keys()))
         cpuq = mp.Queue(len(graph.funcs.keys()))
 
-        processes = []
         for _ in range(nprocs):
-            proc = mp.Process(target=run_scheduler, args=(graph, sleep, ioq, cpuq, trap_exceptions))
+            proc = mp.Process(target=run_scheduler, args=(graph, sleep, ioq, cpuq))
             proc.start()
-            processes += [proc]
 
         while not tgraph.all_done(graph):
             for task in tgraph.get_ready_tasks(graph):
@@ -137,47 +124,33 @@ def run_parallel_async(graph, nprocs=None, sleep=0.2, trap_exceptions=True):
                 else:
                     cpuq.put(task)
 
-            if trap_exceptions == False:
-                is_alive = sum([p.is_alive() for p in processes]) == len(processes)
-                if not is_alive:
-                    failed = [p for p in processes if not p.is_alive()]
-                    msg = 'pid {}: failed tasks {}'.format(os.getpid(), failed)
-                    mlog(graph).error(msg)
-                    map(lambda x: x.terminate(), processes)
-                    raise Exception(msg)
             time.sleep(sleep)
 
         return tgraph.recover_values_from_manager(graph)
 
 
-def run_scheduler(graph, sleep, ioq, cpuq, trap_exceptions=True):
+def run_scheduler(graph, sleep, ioq, cpuq):
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(scheduler(graph, sleep, ioq, cpuq, loop, trap_exceptions))
+    loop.run_until_complete(scheduler(graph, sleep, ioq, cpuq, loop))
     loop.close()
 
 
 # TODO: scheduler can be improved
-async def scheduler(graph, sleep, ioq, cpuq, loop, trap_exceptions):
-    if trap_exceptions:
-        while not tgraph.all_done(graph):
-            try:
-                task = ioq.get_nowait()
-                log(graph).info('pid {}: dequeueing task {}'.format(os.getpid(), task))
-                asyncio.ensure_future(run_task_async(graph, task, True), loop=loop)
-            except Exception:
-                try:
-                    task = cpuq.get_nowait()
-                    log(graph).info('pid {}: dequeueing task {}'.format(os.getpid(), task))
-                    asyncio.ensure_future(run_task_async(graph, task, True), loop=loop)
-                    # don't put two cpu intensive tasks on the same core without waiting
-                    await asyncio.sleep(sleep)
-                except:
-                    await asyncio.sleep(sleep)
-    else:
-        while not tgraph.all_done(graph):
+async def scheduler(graph, sleep, ioq, cpuq, loop):
+    while not tgraph.all_done(graph):
+        try:
             task = ioq.get_nowait()
             log(graph).info('pid {}: dequeueing task {}'.format(os.getpid(), task))
-            asyncio.ensure_future(run_task_async(graph, task, False), loop=loop)
+            asyncio.ensure_future(run_task_async(graph, task), loop=loop)
+        except Exception:
+            try:
+                task = cpuq.get_nowait()
+                log(graph).info('pid {}: dequeueing task {}'.format(os.getpid(), task))
+                asyncio.ensure_future(run_task_async(graph, task), loop=loop)
+                # don't put two cpu intensive tasks on the same core without waiting
+                await asyncio.sleep(sleep)
+            except:
+                await asyncio.sleep(sleep)
 
 
 async def queue_loader(graph, ioq, cpuq, sleep):
