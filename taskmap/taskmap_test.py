@@ -303,6 +303,18 @@ def test_sync_error_handling():
     assert graph_parallel.results['d'].__class__ == expected['d'].__class__
     assert graph_parallel.results['d'].args == expected['d'].args
 
+    try:
+        graph = taskmap.create_graph(funcs.copy(), dependencies.copy())
+        graph = taskmap.run(graph, trap_exceptions=False)
+    except RuntimeError as err:
+        if err.args[0] != 'some error':
+            assert False
+        else:
+            assert True
+    else:
+        assert False
+
+
 
 async def control():
     return 5

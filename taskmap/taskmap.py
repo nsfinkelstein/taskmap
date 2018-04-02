@@ -4,6 +4,7 @@ import os
 import time
 import asyncio
 import logging
+import traceback
 import multiprocess as mp
 
 
@@ -15,15 +16,24 @@ def mlog(graph):
     return logging.getLogger('{}-manager'.format(graph.name))
 
 
-def run_task(graph, task):
-    try:
+
+def run_task(graph, task, trap_exceptions=True):
+    if trap_exceptions:
+            try:
+                graph = tgraph.mark_as_in_progress(graph, task)
+                args = get_task_args(graph, task)
+                log(graph).info('pid {}: starting task {}'.format(os.getpid(), task))
+                result = graph.funcs[task](*args)
+                return task_success(graph, task, result)
+            except Exception as error:
+                return task_error(graph, task, error)
+    else:
         graph = tgraph.mark_as_in_progress(graph, task)
         args = get_task_args(graph, task)
         log(graph).info('pid {}: starting task {}'.format(os.getpid(), task))
         result = graph.funcs[task](*args)
         return task_success(graph, task, result)
-    except Exception as error:
-        return task_error(graph, task, error)
+
 
 
 async def run_task_async(graph, task):
@@ -44,19 +54,20 @@ def task_success(graph, task, result):
 
 
 def task_error(graph, task, error):
-    msg = 'pid {}: failed task {}'.format(os.getpid(), task)
+    tb = traceback.format_exc()
+    msg = 'pid {}: failed task {}: stack {}'.format(os.getpid(), task, tb)
     log(graph).exception(msg, {'exc_info': error})
     graph.results[task] = error
     graph = tgraph.mark_as_done(graph, task)
     return mark_children_as_incomplete(graph, task)
 
 
-def run(graph):
+def run(graph, trap_exceptions=True):
     while not tgraph.all_done(graph):
         ready = tgraph.get_ready_tasks(graph)
         for task in ready:
             log(graph).info('pid {}: claiming task {}'.format(os.getpid(), task))
-            graph = run_task(graph, task)
+            graph = run_task(graph, task, trap_exceptions)
     return graph
 
 
