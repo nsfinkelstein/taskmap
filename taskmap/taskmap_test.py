@@ -372,7 +372,7 @@ def test_async_error_raise_errors():
     funcs = {'e': e, 'control': control}
     dependencies = {'e': [], 'control': []}
 
-    # # when
+    # when
     graph = taskmap.create_graph(funcs, dependencies)
     with pytest.raises(RuntimeError, match='check your logs'):
         taskmap.run_async(graph, raise_errors=True)

@@ -141,7 +141,7 @@ def run_parallel_async(graph, nprocs=None, sleep=0.2, raise_errors=False):
 
         procs = [mp.Process(target=run_scheduler,
                             args=(graph, sleep, ioq, cpuq, raise_errors))
-                            for _ in range(nprocs)]
+                 for _ in range(nprocs)]
         for proc in procs:
             proc.start()
 
@@ -157,7 +157,7 @@ def run_parallel_async(graph, nprocs=None, sleep=0.2, raise_errors=False):
 
             time.sleep(sleep)
 
-            if raise_errors and sum(not p.is_alive() for p in procs):
+            if raise_errors and sum(not p.exitcode for p in procs):
                 raise RuntimeError('An async task has failed. Please check your logs')
 
         return tgraph.recover_values_from_manager(graph)
