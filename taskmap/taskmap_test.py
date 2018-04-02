@@ -284,36 +284,38 @@ def test_sync_error_handling():
     }
 
     # when
-    graph = taskmap.create_graph(funcs.copy(), dependencies.copy())
-    graph = taskmap.run(graph)
+    graph = taskmap.create_graph(funcs, dependencies)
 
-    graph_parallel = taskmap.create_graph(funcs.copy(), dependencies.copy())
-    graph_parallel = taskmap.run_parallel(graph, nprocs=2, sleep=.001)
+    result = taskmap.run(graph)
+    result_parallel = taskmap.run_parallel(graph, nprocs=2, sleep=.001)
 
     # then
     expected = {
         'd': error,
         'c': 'Ancestor task d failed; task not run',
     }
-    assert graph.results['c'] == expected['c']
-    assert graph.results['d'].__class__ == expected['d'].__class__
-    assert graph.results['d'].args == expected['d'].args
+    assert result.results['c'] == expected['c']
+    assert result.results['d'].__class__ == expected['d'].__class__
+    assert result.results['d'].args == expected['d'].args
 
-    assert graph_parallel.results['c'] == expected['c']
-    assert graph_parallel.results['d'].__class__ == expected['d'].__class__
-    assert graph_parallel.results['d'].args == expected['d'].args
+    assert result_parallel.results['c'] == expected['c']
+    assert result_parallel.results['d'].__class__ == expected['d'].__class__
+    assert result_parallel.results['d'].args == expected['d'].args
 
-    try:
-        graph = taskmap.create_graph(funcs.copy(), dependencies.copy())
-        graph = taskmap.run(graph, trap_exceptions=False)
-    except RuntimeError as err:
-        if err.args[0] != 'some error':
-            assert False
-        else:
-            assert True
-    else:
-        assert False
 
+def test_sync_error_raise_errors():
+    # given
+    dependencies = {'c': ['d'], 'd': []}
+    funcs = {'d': d, 'c': c}
+
+    # when
+    graph = taskmap.create_graph(funcs, dependencies)
+    with pytest.raises(RuntimeError, match='some error'):
+        taskmap.run(graph, raise_errors=True)
+
+    graph = taskmap.create_graph(funcs, dependencies)
+    with pytest.raises(RuntimeError, match='some error'):
+        taskmap.run_parallel(graph, raise_errors=True)
 
 
 async def control():
@@ -323,18 +325,20 @@ async def control():
 async def e():
     raise error
 
+async def g(er):
+    return er
 
 def test_async_error_handling():
     # given
     dependencies = {
-        'c': ['e'],
+        'g': ['e'],
         'e': [],
         'control': [],
     }
 
     funcs = {
         'e': e,
-        'c': c,
+        'g': g,
         'control': control,
     }
 
@@ -349,18 +353,33 @@ def test_async_error_handling():
     expected = {
         'e': error,
         'control': 5,
-        'c': 'Ancestor task e failed; task not run',
+        'g': 'Ancestor task e failed; task not run',
     }
 
-    assert graph.results['c'] == expected['c']
+    assert graph.results['g'] == expected['g']
     assert graph.results['e'].__class__ == expected['e'].__class__
     assert graph.results['e'].args == expected['e'].args
     assert graph.results['control'] == 5
 
-    assert graph_parallel.results['c'] == expected['c']
+    assert graph_parallel.results['g'] == expected['g']
     assert graph_parallel.results['e'].__class__ == expected['e'].__class__
     assert graph_parallel.results['e'].args == expected['e'].args
     assert graph.results['control'] == 5
+
+
+def test_async_error_raise_errors():
+    # given
+    funcs = {'e': e, 'control': control}
+    dependencies = {'e': [], 'control': []}
+
+    # when
+    graph = taskmap.create_graph(funcs, dependencies)
+    with pytest.raises(RuntimeError, match='check your logs'):
+        taskmap.run_async(graph, raise_errors=True)
+
+    graph = taskmap.create_graph(funcs, dependencies)
+    with pytest.raises(RuntimeError, match='check your logs'):
+        taskmap.run_parallel_async(graph, raise_errors=True)
 
 
 def test_rebuilding_graph_from_failure():
