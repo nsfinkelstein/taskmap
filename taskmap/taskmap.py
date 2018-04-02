@@ -4,7 +4,6 @@ import os
 import time
 import asyncio
 import logging
-import weakref
 import traceback
 import multiprocess as mp
 
@@ -79,9 +78,11 @@ def run_parallel(graph, nprocs=None, sleep=0.2, raise_errors=False):
         graph = tgraph.create_parallel_compatible_graph(graph, manager)
         with mp.Pool(nprocs) as pool:
 
+            exception_q = mp.Queue(10)
+
             def error_callback(exception):
+                exception_q.put_nowait(exception)
                 pool.terminate()
-                raise exception
 
             while not tgraph.all_done(graph):
                 for task in tgraph.get_ready_tasks(graph, reverse=False):
@@ -93,6 +94,10 @@ def run_parallel(graph, nprocs=None, sleep=0.2, raise_errors=False):
                         error_callback=error_callback
                     )
                 time.sleep(sleep)
+
+                if not exception_q.empty():
+                    raise exception_q.get()
+
         return tgraph.recover_values_from_manager(graph)
 
 

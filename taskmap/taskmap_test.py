@@ -309,14 +309,13 @@ def test_sync_error_raise_errors():
     funcs = {'d': d, 'c': c}
 
     # when
-    # graph = taskmap.create_graph(funcs, dependencies)
-    # with pytest.raises(RuntimeError, match='some error'):
-    #     taskmap.run(graph, raise_errors=True)
+    graph = taskmap.create_graph(funcs, dependencies)
+    with pytest.raises(RuntimeError, match='some error'):
+        taskmap.run(graph, raise_errors=True)
 
     graph = taskmap.create_graph(funcs, dependencies)
-    taskmap.run_parallel(graph, raise_errors=True)
-    # with pytest.raises(RuntimeError, match='some error'):
-    #     taskmap.run_parallel(graph, raise_errors=True)
+    with pytest.raises(RuntimeError, match='some error'):
+        taskmap.run_parallel(graph, raise_errors=True)
 
 
 async def control():
