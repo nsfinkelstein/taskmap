@@ -325,18 +325,20 @@ async def control():
 async def e():
     raise error
 
+async def g(er):
+    return er
 
 def test_async_error_handling():
     # given
     dependencies = {
-        'c': ['e'],
+        'g': ['e'],
         'e': [],
         'control': [],
     }
 
     funcs = {
         'e': e,
-        'c': c,
+        'g': g,
         'control': control,
     }
 
@@ -351,15 +353,15 @@ def test_async_error_handling():
     expected = {
         'e': error,
         'control': 5,
-        'c': 'Ancestor task e failed; task not run',
+        'g': 'Ancestor task e failed; task not run',
     }
 
-    assert graph.results['c'] == expected['c']
+    assert graph.results['g'] == expected['g']
     assert graph.results['e'].__class__ == expected['e'].__class__
     assert graph.results['e'].args == expected['e'].args
     assert graph.results['control'] == 5
 
-    assert graph_parallel.results['c'] == expected['c']
+    assert graph_parallel.results['g'] == expected['g']
     assert graph_parallel.results['e'].__class__ == expected['e'].__class__
     assert graph_parallel.results['e'].args == expected['e'].args
     assert graph.results['control'] == 5
