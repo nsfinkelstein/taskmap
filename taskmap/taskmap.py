@@ -38,7 +38,7 @@ async def run_task_async(graph, task, raise_errors=False):
     log(graph).info('pid {}: starting task {}'.format(os.getpid(), task))
 
     try:
-        result = await graph.funcs[task](*args)
+        result = await asyncio.coroutine(graph.funcs[task])(*args)
         return task_success(graph, task, result)
 
     except Exception as error:
