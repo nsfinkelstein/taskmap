@@ -70,7 +70,7 @@ def test_async_parallel_demo():
     graph = taskmap.create_graph(funcs, dependencies, io_bound=io_bound)
 
     # when
-    graph = taskmap.run_parallel_async(graph, ncores=2)
+    graph = taskmap.run_parallel_async(graph, nprocs=2)
 
     # then
     assert graph.results['io_bound_a'] == 'io_a'
